@@ -6,12 +6,8 @@ import os
 import math
 import random
 import time
-import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.parallel
-import torch.backends.cudnn as cudnn
-import torch.optim as optim
 import torch.utils.data
 from torch.autograd import Variable
 from datasets.shapenet.dataset_eval import SymDataset as SymDataset_shapenet
@@ -42,7 +38,7 @@ parser.add_argument('--resume_refinenet', type=str, default='', help='resume Pos
 parser.add_argument('--start_epoch', type=int, default=1, help='which epoch to start')
 opt = parser.parse_args()
 
-proj_dir = '/home/dell/yifeis/pose_estimation/densefusion_syn_test/'
+proj_dir = '/home/dell/yifeis/symnet/'
 device_ids = [0]
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 

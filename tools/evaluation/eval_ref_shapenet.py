@@ -2,7 +2,7 @@
 import argparse
 import os
 import sys
-sys.path.append('/home/dell/yifeis/pose_estimation/densefusion_syn_test/')
+sys.path.append('/home/dell/yifeis/symnet/')
 import math
 import random
 import time
@@ -17,7 +17,7 @@ import numpy as np
 from self_loss import self_loss
 import open3d
 
-import sklearn.cluster as skc  # 密度聚类
+import sklearn.cluster as skc
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default = 'shapenet', help='shapenet or scan2cad')
@@ -40,9 +40,9 @@ parser.add_argument('--resume_refinenet', type=str, default='', help='resume Pos
 parser.add_argument('--start_epoch', type=int, default=1, help='which epoch to start')
 opt = parser.parse_args()
 
-proj_dir = '/home/dell/yifeis/pose_estimation/densefusion_syn_test/'
+proj_dir = '/home/dell/yifeis/symnet/'
 device_ids = [0]
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 def prcurve(DIST_THRESHOLD):
     opt.manualSeed = random.randint(1, 10000)
@@ -72,8 +72,8 @@ def prcurve(DIST_THRESHOLD):
     opt.num_points_mesh = dataset.get_num_points_mesh()
 
     print(
-        '>>>>>>>>----------Dataset loaded!---------<<<<<<<<\nlength of the training set: {0}\nlength of the testing set: {1}\nnumber of sample points on mesh: {2}\nsymmetry object list: {3}'.format(
-            len(dataset), len(test_dataset), opt.num_points_mesh, opt.sym_list))
+        '>>>>>>>>----------Dataset loaded!---------<<<<<<<<\nlength of the training set: {0}\nlength of the testing set: {1}\nnumber of sample points on mesh: {2}\n'.format(
+            len(dataset), len(test_dataset), opt.num_points_mesh))
 
     estimator.eval()
     fp = 0

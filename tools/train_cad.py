@@ -14,7 +14,7 @@ import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
 import sys
-sys.path.append('/home/dell/yifeis/pose_estimation/densefusion_syn_test/')
+sys.path.append('/home/dell/yifeis/symnet/')
 from torch.autograd import Variable
 from datasets.scan2cad.dataset_scan2cad import SymDataset as SymDataset_scan2cad
 from lib.network import SymNet

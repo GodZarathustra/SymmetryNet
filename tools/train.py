@@ -15,7 +15,7 @@ import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
 import sys
-sys.path.append('/home/dell/yifeis/pose_estimation/densefusion_syn_test/')
+sys.path.append('/home/dell/yifeis/symnet/')
 from torch.autograd import Variable
 from datasets.shapenet.dataset import SymDataset as SymDataset_shapenet
 from lib.network import SymNet
@@ -40,12 +40,12 @@ parser.add_argument('--resume_posenet', type=str, default = '',  help='resume Po
 parser.add_argument('--start_epoch', type=int, default = 1, help='which epoch to start')
 opt = parser.parse_args()
 
-proj_dir = '/home/dell/yifeis/pose_estimation/densefusion_syn_test/'
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+proj_dir = '/home/dell/yifeis/symnet/'
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 def main():
-    device_ids = range(torch.cuda.device_count())
-    print(device_ids)
+    # device_ids = range(torch.cuda.device_count())
+    # print(device_ids)
     opt.manualSeed = random.randint(1, 10000)
     random.seed(opt.manualSeed)
     torch.manual_seed(opt.manualSeed)
@@ -65,7 +65,7 @@ def main():
 
     estimator = SymNet(num_points = opt.num_points)
     estimator = estimator.cuda()
-    estimator = torch.nn.DataParallel(estimator, device_ids=device_ids)
+    estimator = torch.nn.DataParallel(estimator)
 
     if opt.resume_posenet != '':
         estimator.load_state_dict(torch.load('{0}/{1}'.format(opt.outf, opt.resume_posenet)))
