@@ -222,8 +222,7 @@ class SymDataset(data.Dataset):
                torch.LongTensor([int(idx)]), \
                torch.from_numpy(target_s.astype(np.float32)),\
                torch.LongTensor([target_num]),\
-               torch.LongTensor([target_mode]),\
-               mask_real/(540*960)
+               torch.LongTensor([target_mode])
 
     def __len__(self):
         return self.length
