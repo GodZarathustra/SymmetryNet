@@ -15,7 +15,7 @@ python >=3.6
 * **ref-ctp-loss** : the counterpart error,i.e. ctp-dis/ctp-len
 * **num-loss** : optmal assigment loss
 * **mode-loss** : classification of symmetry types, ref-only(0)? rot-only(1)? both(2)?
-* **ref-co-loss** : for reflectional symmetry, the distance from input point to its counterpart point is 2 times as large as the distance from input point to its foot point on the symmetry, i.e. ctp-dis = 2*foot-pt-distance 
+* **ref-co-loss** : for reflectional symmetry, the distance from input point to its counterpart point is 2 times as large as the distance from input point to its foot point on the symmetry, i.e. ctp-dis = 2*foot-pt-dis
 * **rot-co-loss**: for rotational symmetry, the vector from an input point to its foot point is perpendicular to the vector from center to the foot point,i.e. center-to-foot ⊥ pt-to-foot
 
 ## Traing
