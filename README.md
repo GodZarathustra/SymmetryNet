@@ -7,6 +7,7 @@ SymmetryNet: Learning to Predict Reflectional and Rotational Symmetries of 3D Sh
 
 ## Environments
 pytorch>=0.4.1
+python >=3.6
 
 ## Loss:
 > center-loss + ref-ctp-loss + ref-foot-loss + rot-foot-loss + num-loss + mode-loss + ref-co-loss + rot-co-loss
@@ -18,9 +19,23 @@ pytorch>=0.4.1
 * **rot-co-loss**: for rotational symmetry, the vector from an input point to its foot point is perpendicular to the vector from center to the foot point,i.e. center-to-foot ⊥ pt-to-foot
 
 ## Traing
-To simply train the network with the default parameter, run
+To simply train the network with the default parameter on shapenet dataset, run<br>
+```
+python tools/train.py
+```
 
 ## Evaluation
-To evaluate model with our metric,run
+To evaluate the model with our metric on shapenet, for reflectional symmetry, run<br>
+
+```
+python tools/evaluation/eval_ref_shapenet.py
+```
+
+for rotational symmetry, run<br>
+
+```
+python tools/evaluation/eval_rot_shapenet.py
+```
+
 
 
