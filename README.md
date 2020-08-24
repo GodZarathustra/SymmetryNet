@@ -1,6 +1,10 @@
 # SymmetryNet
 SymmetryNet: Learning to Predict Reflectional and Rotational Symmetries of 3D Shapes from Single-View RGB-D Images
 
+ACM Transactions on Graphics (Proceedings of SIGGRAPH Asia 2020)
+
+Created by Yifei Shi, Junwen Huang, Hongjia Zhang, Xin Xu, Szymon Rusinkiewicz and Kai Xu
+
 * **tools**: the training scripts and evaluation scripts
 * **lib**: the core Python library for networks and loss
 * **datasets**: the dataloader and training/testing lists
