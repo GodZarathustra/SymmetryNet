@@ -32,7 +32,7 @@ opt = parser.parse_args()
 proj_dir = '/home/dell/yifeis/symnet/'
 model_dir = '/home/dell/yifeis/pose_estimation/densefusion_syn_test/'
 device_ids = [0]
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 
 def prcurve(DIST_THRESHOLD):
@@ -66,7 +66,7 @@ def prcurve(DIST_THRESHOLD):
     if opt.dataset == 'ycb':
         dataset = PoseDataset_ycb('syn_train', opt.num_points, False, opt.dataset_root, opt.noise_trans,
                                   opt.refine_start)
-        test_dataset = PoseDataset_ycb('syn_frame', opt.num_points, False, opt.dataset_root, 0.0, opt.refine_start)
+        test_dataset = PoseDataset_ycb('syn_ins', opt.num_points, False, opt.dataset_root, 0.0, opt.refine_start)
     testdataloader = torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=opt.workers)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=opt.workers)
 
@@ -167,7 +167,7 @@ def prcurve(DIST_THRESHOLD):
             else:
                 norm_conf = 1
             norm_conf_list[i] = norm_conf
-            # sym_conf[i] = my_num[i] * norm_conf
+            sym_conf[i] = my_num[i] * norm_conf
         edtime = time.time() - st_time
         print('endtime=', edtime)
         #######RANSAC
@@ -179,14 +179,14 @@ def prcurve(DIST_THRESHOLD):
         # refine_sym = symmetry_icp_refinement(points, out_sym_, mean_cent, 0.005)
         # out_cent = refine_sym[:3]
         # out_sym = refine_sym[3:].reshape(-1, 3)
-        out_sym = np.nan_to_num(out_sym)
+        # out_sym = np.nan_to_num(out_sym)
         ########self-loss
-        self_conf_list = []
-        for i in range(3):
-            outlier = self_loss(out_sym[i], out_cent, points, depth, cam_ins, 100)
-            self_conf = 1 - outlier / 1000
-            self_conf_list.append(self_conf)
-            sym_conf[i] = my_num[i] *self_conf *norm_conf_list[i]
+        # self_conf_list = []
+        # for i in range(3):
+        #     outlier = self_loss(out_sym[i], out_cent, points, depth, cam_ins, 100)
+        #     self_conf = 1 - outlier / 1000
+        #     self_conf_list.append(self_conf)
+        #     sym_conf[i] = my_num[i] *self_conf *norm_conf_list[i]
 
         my_ref = reflect(points, out_cent, out_sym)
         target_ref = reflect(points, target_cent, target_sym)
@@ -209,11 +209,11 @@ def prcurve(DIST_THRESHOLD):
         rst_list = []
 
         for m in range(out_sym.shape[0]):
-            if sym_conf[m]<0.3:
+            if sym_conf[m]<0.5:
                 continue
             for n in range(target_sym.reshape(-1, 3).shape[0]):
                 target_len = np.linalg.norm(target_vector[:, n, :], axis=1)
-                max_len = np.max(target_len)
+                max_len = np.mean(target_len)
                 dense_dis = np.linalg.norm((my_ref[:, m, :] - target_ref[:, n, :]), axis=1)
                 ctp_dis = np.linalg.norm((counterpart[:, m, :] - target_ref[:, n, :]), axis=1)
                 dis_mean = np.mean(ctp_dis, axis=0)
@@ -280,6 +280,20 @@ def run_ransac(data, estimate, is_inlier, sample_size, goal_inliers, max_iterati
     return best_model, best_ic
 
 
+def ref_pt(pt, cent, sym_vect):
+    pt = pt.reshape(1000, 1, 3)
+    cent = cent.reshape(1000, 1, 3)
+    sym_vect = sym_vect.reshape(1000, -1, 3)
+    pt_pred = np.zeros(sym_vect.shape)
+    for i in range(sym_vect.shape[1]):
+        center = cent.reshape(1000, 3, 1)
+        norm = sym_vect[:, i, :].reshape(1000, 1, 3)
+        d = -np.matmul(norm, center)
+        pt_ = pt - 2 * (np.matmul(norm, pt.reshape(1000, 3, 1)) + d) * norm
+        pt_pred[:, i, :] = pt_.reshape(1000, 3)
+    return pt_pred
+
+
 def reflect(Data, cent, sym):
     Data = Data.reshape(1000, 3)
     cent = cent.reshape(3)
@@ -302,6 +316,7 @@ def reflect(Data, cent, sym):
             ref_point[i, :] = np.array([sym_x, sym_y, sym_z])
         reflect_points[:, j, :] = ref_point
     return reflect_points
+
 
 def symmetry_icp_refinement(visual_points, pred_sym, pred_cent, icp_threshold):
     refined_pred_sym = []
@@ -450,7 +465,7 @@ if __name__ == '__main__':
     plt.plot(thresh_list, disin_list, linewidth=3)
 
     plot_data = np.concatenate((np.array(thresh_list).reshape(-1, 1), np.array(disin_list).reshape(-1, 1)), axis=1)
-    np.savetxt(savedir + 'eval-veri-frame-0.3-max' + '.txt', plot_data)
+    np.savetxt(savedir + 'eval-noveri-ins-0.5-mean' + '.txt', plot_data)
 
     end_time = time.time()
     print("run_time=", end_time - st_time)
@@ -460,4 +475,4 @@ if __name__ == '__main__':
     plt.ylabel('correspondences', fontsize=20)
     plt.tick_params(axis='both', labelsize=15)
     plt.title('counterpart eval\n', fontsize=20)
-    plt.savefig(savedir + 'ctp-veri-frame-0.3-max.png', dpi=300, bbox_inches='tight')
+    plt.savefig(savedir + 'ctp-noveri-ins-0.5-mean.png', dpi=300, bbox_inches='tight')
