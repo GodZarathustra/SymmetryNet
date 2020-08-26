@@ -13,15 +13,16 @@ import torch
 import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
-import sys
 from torch.autograd import Variable
 from datasets.scan2cad.dataset_scan2cad import SymDataset as SymDataset_scan2cad
+from datasets.ycb.dataset import PoseDataset as SymDataset_scan2cad
+from datasets.shapenet.dataset import SymDataset as SymDataset_scan2cad
 from lib.network import SymNet
 from lib.loss_all import Loss
 from lib.utils import setup_logger
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', type=str, default = 'scan2cad', help='shapenet or scan2cad or ycb')
+parser.add_argument('--dataset', type=str, default = 'ycb', help='scan2cad or ycb')
 parser.add_argument('--dataset_root', type=str, default = '', help='dataset root dir')
 parser.add_argument('--batch_size', type=int, default = 8, help='batch size')
 parser.add_argument('--workers', type=int, default = 0, help='number of data loading workers')
@@ -49,8 +50,8 @@ def main():
 
     if opt.dataset == 'scan2cad':
         opt.num_points = 1000  # number of points on the input pointcloud
-        opt.outf = proj_dir + 'trained_models/scan2cad'  # folder to save trained models
-        opt.log_dir = proj_dir + 'experiments/logs/scan2cad'  # folder to save logs
+        opt.outf = proj_dir+'trained_models/scan2cad'  # folder to save trained models
+        opt.log_dir = proj_dir+'experiments/logs/scan2cad'  # folder to save logs
         opt.repeat_epoch = 1  # number of repeat times for one epoch training
     elif opt.dataset == 'ycb':
         opt.num_points = 1000  # number of points on the input pointcloud
@@ -170,9 +171,11 @@ def main():
         test_count = 0
         ang_tps = 0
         estimator.eval()
-
+        sym_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 15, 17, 18, 19, 20]
         for j, data in enumerate(testdataloader, 0):
             points, choose, img, idx, target_s, target_num,target_mode,pt_num = data
+            if (idx not in sym_list) or (pt_num < 0.01):
+                continue
             points, choose, img, idx, target_s, target_num, target_mode = Variable(points).cuda(), \
                                                                           Variable(choose).cuda(), \
                                                                           Variable(img).cuda(), \

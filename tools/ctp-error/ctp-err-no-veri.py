@@ -1,19 +1,18 @@
-#coding=utf-8
+# coding=utf-8
 import argparse
 import os
 import sys
-sys.path.append('/home/dell/yifeis/pose_estimation/densefusion_syn_test/')
+
+sys.path.append('/home/dell/yifeis/symnet/')
 import math
 import random
 import time
 import torch
 import torch.nn.parallel
-import torch.optim as optim
 import torch.utils.data
 from torch.autograd import Variable
-from datasets.shapenet.dataset_ablation import PoseDataset as PoseDataset_ycb
-from lib.network import PoseNet, PoseRefineNet
-from lib.loss3 import Loss
+from datasets.baseline.dataset_eval import PoseDataset as PoseDataset_ycb
+from lib.network import SymNet
 import matplotlib.pyplot as plt
 import numpy as np
 import open3d
@@ -21,31 +20,20 @@ import open3d
 import sklearn.cluster as skc
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', type=str, default='ycb', help='ycb or linemod')
-parser.add_argument('--dataset_root', type=str, default='/home/dell/yifeis/pose_estimation/render/render_dy/render_wt_pt_proj/data/',
-                    help='dataset root dir (''YCB_Video_Dataset'' or ''Linemod_preprocessed'')')
-parser.add_argument('--batch_size', type=int, default=4, help='batch size')
-parser.add_argument('--workers', type=int, default=20, help='number of data loading workers')
-parser.add_argument('--lr', default=0.0001, help='learning rate')
-parser.add_argument('--lr_rate', default=0.3, help='learning rate decay rate')
-parser.add_argument('--w', default=0.015, help='learning rate')
-parser.add_argument('--w_rate', default=0.3, help='learning rate decay rate')
-parser.add_argument('--decay_margin', default=0.016, help='margin to decay lr & w')
-parser.add_argument('--refine_margin', default=0.013, help='margin to start the training of iterative refinement')
-parser.add_argument('--noise_trans', default=0.03,
-                    help='range of the random noise of translation added to the training data')
-parser.add_argument('--iteration', type=int, default=2, help='number of refinement iterations')
+parser.add_argument('--dataset', type=str, default = 'shapenet', help='shapenet or scan2cad')
+parser.add_argument('--dataset_root', type=str, default = '', help='dataset root dir')
+parser.add_argument('--batch_size', type=int, default = 8, help='batch size')
+parser.add_argument('--workers', type=int, default = 0, help='number of data loading workers')
+parser.add_argument('--noise_trans', default=0.03, help='range of the random noise of translation added to the training data')
 parser.add_argument('--nepoch', type=int, default=500, help='max number of epochs to train')
-parser.add_argument('--resume_posenet', type=str, default='pose_model_74_2.6062995263602997.pth', help='resume PoseNet model')  # pose_model_current.pth  pose_model_58_1.059006152053674.pth  pose_model_39_1.2116587293644747.pth pose_model_49_1.2153524918986691.pth
-parser.add_argument('--resume_refinenet', type=str, default='', help='resume PoseRefineNet model')
-parser.add_argument('--start_epoch', type=int, default=1, help='which epoch to start')
+parser.add_argument('--resume_posenet', type=str, default = '',  help='resume PoseNet model')
 opt = parser.parse_args()
 
-proj_dir = '/home/dell/yifeis/pose_estimation/densefusion_syn_test/'
-sym_list = training_cat = [0, 3, 7, 10, 11, 12, 14, 16, 17, 19, 21, 22]
-visual_dir = proj_dir+'datasets/ycb/dataset_config/visual_data_list.txt'
+proj_dir = '/home/dell/yifeis/symnet/'
+model_dir = '/home/dell/yifeis/pose_estimation/densefusion_syn_test/'
 device_ids = [0]
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+
 
 def prcurve(DIST_THRESHOLD):
     opt.manualSeed = random.randint(1, 10000)
@@ -55,16 +43,14 @@ def prcurve(DIST_THRESHOLD):
     if opt.dataset == 'ycb':
         opt.num_objects = 21  # number of object classes in the dataset
         opt.num_points = 1000  # number of points on the input pointcloud
-        opt.outf = proj_dir + 'trained_models/ablation'  # folder to save trained models
+        opt.outf = model_dir + 'trained_models/ycb'  # folder to save trained models
         opt.log_dir = proj_dir + 'visualization'  # folder to save logs
         opt.repeat_epoch = 1  # number of repeat times for one epoch training
 
-    estimator = torch.nn.DataParallel(PoseNet(num_points=opt.num_points, num_obj=opt.num_objects))
+    estimator = torch.nn.DataParallel(SymNet(num_points=opt.num_points))
     # torch.nn.DataParallel(module=estimator, device_ids=device_ids)
     estimator.cuda(device_ids[0])
     torch.nn.DataParallel(module=estimator, device_ids=device_ids)
-    refiner = PoseRefineNet(num_points=opt.num_points, num_obj=opt.num_objects)
-    refiner.cuda()
 
     if opt.resume_posenet != '':
         estimator.load_state_dict(torch.load('{0}/{1}'.format(opt.outf, opt.resume_posenet)))
@@ -75,13 +61,12 @@ def prcurve(DIST_THRESHOLD):
     else:
         opt.refine_start = False
         opt.decay_start = False
-        optimizer = optim.Adam(estimator.parameters(), lr=opt.lr)
         opt.w *= opt.w_rate
 
     if opt.dataset == 'ycb':
         dataset = PoseDataset_ycb('syn_train', opt.num_points, False, opt.dataset_root, opt.noise_trans,
                                   opt.refine_start)
-        test_dataset = PoseDataset_ycb('syn_class', opt.num_points, False, opt.dataset_root, 0.0, opt.refine_start)
+        test_dataset = PoseDataset_ycb('syn_ins', opt.num_points, False, opt.dataset_root, 0.0, opt.refine_start)
     testdataloader = torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=opt.workers)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=opt.workers)
 
@@ -92,19 +77,13 @@ def prcurve(DIST_THRESHOLD):
         '>>>>>>>>----------Dataset loaded!---------<<<<<<<<\nlength of the training set: {0}\nlength of the testing set: {1}\nnumber of sample points on mesh: {2}\nsymmetry object list: {3}'.format(
             len(dataset), len(test_dataset), opt.num_points_mesh, opt.sym_list))
 
-    criterion = Loss(opt.num_points_mesh)
-
-    point_zero = np.zeros((1000, 3))
-
     estimator.eval()
     total_fream = 0
-
     total_num = 0
-    pred_c = 1
     ctp_dis_list = []
+
     for j, data in enumerate(testdataloader, 0):
-        points, choose, img, idx, target_s, target_num, target_mode, pt_num = data
-        # points, choose, img, idx, target_s, target_num, target_mode, occ, cloud_, depth, cam_ins, num_pt, _ = data
+        points, choose, img, idx, target_s, target_num, target_mode, occ, cloud_, depth, cam_ins, num_pt, _ = data
 
         points, choose, img, idx, target_s, target_num, target_mode = Variable(points).cuda(), \
                                                                       Variable(choose).cuda(), \
@@ -116,9 +95,8 @@ def prcurve(DIST_THRESHOLD):
 
         pred_cent, pred_ref, pred_foot_ref, pred_rot, pred_num, pred_mode, emb = estimator(img, points,
                                                                                            choose)
-
         target_mode = target_mode.data.cpu().numpy().reshape(-1)
-        # occ = occ.data.cpu().numpy()[0]
+        occ = occ.data.cpu().numpy()[0]
         #  ((occ < 0.7)or(occ>0.8)) : 70-80
         #  ((occ <0.6)or(occ>0.7)) :  60-70
         #  (occ>0.6) :  <60
@@ -131,9 +109,9 @@ def prcurve(DIST_THRESHOLD):
         target_cent = tmp_s[0, :]
         target_sym = tmp_s[1:, :]  # target symmetry point
         len_target_sym = np.linalg.norm((target_sym - target_cent), axis=1)
-        # num_pt = num_pt.data.cpu().numpy()[0]
-        # cam_ins = cam_ins.data.cpu().numpy().reshape(4)
-        # depth = depth.data.cpu().numpy()
+        num_pt = num_pt.data.cpu().numpy()[0]
+        cam_ins = cam_ins.data.cpu().numpy().reshape(4)
+        depth = depth.data.cpu().numpy()
 
         points = points.view(1000, 3)
         points = points.detach().cpu().data.numpy()
@@ -164,17 +142,6 @@ def prcurve(DIST_THRESHOLD):
         mean_norm = np.mean(my_norm, axis=0)  # n*3
         mean_cent = np.mean(cent_pred, axis=0)  # 1*3
         out_cent = mean_cent
-
-        #############RANSAC
-        # foot_pred = pred_foot_ref + points.reshape(1000,1,3)
-        # max_iterations = 100
-        # goal_inliers = 1000 * 0.7
-        # ransac_syms = np.zeros((3,3))
-        # for i in range(3):
-        #     xyz = foot_pred[:,i,:]
-        #     m, b = run_ransac(xyz, estimate, lambda x, y: is_inlier(x, y, 0.01), 10, goal_inliers, max_iterations)
-        #     a, b, c, d = m
-        #     ransac_syms[i, :] = np.array([a,b,c])/np.linalg.norm(np.array([a,b,c]))
 
         # ########DBSCAN
         st_time = time.time()
@@ -212,14 +179,14 @@ def prcurve(DIST_THRESHOLD):
         # refine_sym = symmetry_icp_refinement(points, out_sym_, mean_cent, 0.005)
         # out_cent = refine_sym[:3]
         # out_sym = refine_sym[3:].reshape(-1, 3)
-
-        # ########self-loss
+        # out_sym = np.nan_to_num(out_sym)
+        ########self-loss
         # self_conf_list = []
         # for i in range(3):
         #     outlier = self_loss(out_sym[i], out_cent, points, depth, cam_ins, 100)
         #     self_conf = 1 - outlier / 1000
         #     self_conf_list.append(self_conf)
-        #     sym_conf[i] = my_num[i] #*self_conf*norm_conf_list[i]
+        #     sym_conf[i] = my_num[i] *self_conf *norm_conf_list[i]
 
         my_ref = reflect(points, out_cent, out_sym)
         target_ref = reflect(points, target_cent, target_sym)
@@ -246,13 +213,13 @@ def prcurve(DIST_THRESHOLD):
                 continue
             for n in range(target_sym.reshape(-1, 3).shape[0]):
                 target_len = np.linalg.norm(target_vector[:, n, :], axis=1)
-                max_len = np.max(target_len)
+                max_len = np.mean(target_len)
                 dense_dis = np.linalg.norm((my_ref[:, m, :] - target_ref[:, n, :]), axis=1)
                 ctp_dis = np.linalg.norm((counterpart[:, m, :] - target_ref[:, n, :]), axis=1)
                 dis_mean = np.mean(ctp_dis, axis=0)
                 metric_mean = dis_mean / max_len
                 rst_list.append(metric_mean)
-            ctp_dis_list.append(np.max(rst_list))
+            ctp_dis_list.append(np.min(rst_list))
             total_num+=1
 
         print('predcting frame:', j, ' object:', idx, 'target_num', target_num)
@@ -261,7 +228,7 @@ def prcurve(DIST_THRESHOLD):
     indis_list = []
     ctp_dis_list = np.array(ctp_dis_list)
 
-    np.savetxt('./bigdata/ctp-ablation/ctp-point_dis_list-class-0.5.txt', ctp_dis_list)
+    # np.savetxt('./ctp_veri_dis_list-ins-0.5-max.txt', ctp_dis_list)
     for t in range(1, 50001):
         dis_thresh = t / 10000
         indis = len(np.where(ctp_dis_list <= dis_thresh)[0])
@@ -447,43 +414,65 @@ def symmetry_icp_refinement(visual_points, pred_sym, pred_cent, icp_threshold):
     print('pred_sym', pred_sym)
     print('refined_pred_sym', refined_pred_sym)
     return refined_pred_sym
-
+def self_loss(sym,center, input_point, rgbd, instrin, depth_scale):
+    Data = input_point.reshape(1000,3)     ##read point n*6
+    unsupport_count=0
+    center = center.reshape(3)
+    sym = sym.reshape(3)
+    x1 = center[0]                  #对称面上中心点
+    y1 = center[1]
+    z1 = center[2]
+    a = sym[0]                   #对称面法向量
+    b = sym[1]
+    c = sym[2]
+    depth_image = rgbd[0]  ##depth image
+    camera_cx = instrin[0]
+    camera_cy = instrin[1]
+    camera_fx = instrin[2]
+    camera_fy = instrin[3]
+    for i in range(0, Data.shape[0]):
+        d = a*x1+b*y1+c*z1
+        t = (d-(a*Data[i][0]+b*Data[i][1]+c*Data[i][2]))/(a*a+b*b+c*c)
+        sym_x = 2 * a * t + Data[i][0]                      ##计算得到的对称点
+        sym_y = 2 * b * t + Data[i][1]
+        sym_z = 2 * c * t + Data[i][2]
+        n_pre = ((sym_x) * camera_fx) / sym_z + camera_cx   ##depth index
+        m_pre = ((sym_y) * camera_fy) / sym_z + camera_cy
+        x_pre = m_pre
+        y_pre = n_pre
+        if x_pre >= 540 or x_pre < 0 or y_pre < 0 or y_pre >= 960 or math.isnan(y_pre) or math.isnan(x_pre):  ##防止深度图索引越界
+            unsupport_count = unsupport_count+1
+        else:
+            x_pre = int(x_pre)
+            y_pre = int(y_pre)
+            ori_depth = depth_image[x_pre][y_pre]   ##depth value on surface
+            pre_depth = sym_z*depth_scale           ##depth value of symmetric point
+            if ori_depth - pre_depth > 30:         ##相差大于2.5cm计数
+                unsupport_count = unsupport_count+1
+    return unsupport_count
 
 if __name__ == '__main__':
     st_time = time.time()
-    savedir = proj_dir + 'tools/bigdata/ctp-ablation/'
+    savedir = proj_dir + 'tools/ctp-error/'
     ang_list = [5, 10, 15, 20, 25]
     dis_list = [5, 10, 15, 20, 25]
     distance_list = [0.05, 0.1, 0.3, 0.4, 0.5]
     DIST_THRESHOLD = 15
     plt.style.use('fivethirtyeight')
-    # angle_list = [math.cos(math.pi / 180 * 5),math.cos(math.pi / 180 * 10),
-    #               math.cos(math.pi / 180 * 15),math.cos(math.pi / 180 * 20)]
-    # angle_list = [5, 10, 15, 20]
-    # color_list = ['steelblue', 'blue', 'black', 'green', 'yellow', 'pink']
-    i = 0
-    # for DIST_THRESHOLD in dis_list:
-    #     recall, prec = prcurve(math.tan(DIST_THRESHOLD/180*math.pi))
-    #     plt.plot(recall, prec, label='distance ratio ='+str(DIST_THRESHOLD), color=color_list[i])
-    #     i += 1
 
+    i = 0
     disin_list, thresh_list = prcurve(math.tan(DIST_THRESHOLD / 180 * math.pi))
     plt.plot(thresh_list, disin_list, linewidth=3)
 
-    # recall, prec = prcurve(DIST_THRESHOLD)
-    # plt.plot(recall, prec, label='distance=' + str(DIST_THRESHOLD), color=color_list[i])
     plot_data = np.concatenate((np.array(thresh_list).reshape(-1, 1), np.array(disin_list).reshape(-1, 1)), axis=1)
-    np.savetxt(savedir + 'data/' + 'eval-point-class-0.5' + '.txt', plot_data)
+    np.savetxt(savedir + 'eval-noveri-ins-0.5-mean' + '.txt', plot_data)
 
     end_time = time.time()
     print("run_time=", end_time - st_time)
-    plt.axis([0, 3, 0, 1])
+    plt.axis([0, 1, 0, 1])
     plt.legend(loc='upper right', fontsize=15)
     plt.xlabel('% counterpart error', fontsize=20)
     plt.ylabel('correspondences', fontsize=20)
     plt.tick_params(axis='both', labelsize=15)
     plt.title('counterpart eval\n', fontsize=20)
-    plt.savefig(savedir + 'ctp-point-class-0.5.png', dpi=300, bbox_inches='tight')
-
-    # plt.savefig(savedir + 'new-frame_ref-mynum_normconf.png')
-    # plt.show()
+    plt.savefig(savedir + 'ctp-noveri-ins-0.5-mean.png', dpi=300, bbox_inches='tight')

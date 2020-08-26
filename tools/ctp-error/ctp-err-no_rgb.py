@@ -1,18 +1,20 @@
-# coding=utf-8
+#coding=utf-8
 import argparse
 import os
 import sys
-
+# sys.path.append('/home/dell/yifeis/pose_estimation/densefusion_syn_test/')
 sys.path.append('/home/dell/yifeis/symnet/')
 import math
 import random
 import time
 import torch
 import torch.nn.parallel
+import torch.optim as optim
 import torch.utils.data
 from torch.autograd import Variable
-from datasets.baseline.dataset_eval import PoseDataset as PoseDataset_ycb
+from datasets.shapenet.dataset_no_rgb import PoseDataset as PoseDataset_ycb
 from lib.network import SymNet
+# from lib.loss import Loss
 import matplotlib.pyplot as plt
 import numpy as np
 import open3d
@@ -29,11 +31,12 @@ parser.add_argument('--nepoch', type=int, default=500, help='max number of epoch
 parser.add_argument('--resume_posenet', type=str, default = '',  help='resume PoseNet model')
 opt = parser.parse_args()
 
-proj_dir = '/home/dell/yifeis/symnet/'
 model_dir = '/home/dell/yifeis/pose_estimation/densefusion_syn_test/'
+proj_dir = '/home/dell/yifeis/symnet/'
+sym_list = training_cat = [0, 3, 7, 10, 11, 12, 14, 16, 17, 19, 21, 22]
+visual_dir = proj_dir+'datasets/ycb/dataset_config/visual_data_list.txt'
 device_ids = [0]
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
 
 def prcurve(DIST_THRESHOLD):
     opt.manualSeed = random.randint(1, 10000)
@@ -43,8 +46,8 @@ def prcurve(DIST_THRESHOLD):
     if opt.dataset == 'ycb':
         opt.num_objects = 21  # number of object classes in the dataset
         opt.num_points = 1000  # number of points on the input pointcloud
-        opt.outf = model_dir + 'trained_models/ycb'  # folder to save trained models
-        opt.log_dir = proj_dir + 'visualization'  # folder to save logs
+        opt.outf = model_dir + 'trained_models/ablation'  # folder to save trained models
+        opt.log_dir = model_dir + 'visualization'  # folder to save logs
         opt.repeat_epoch = 1  # number of repeat times for one epoch training
 
     estimator = torch.nn.DataParallel(SymNet(num_points=opt.num_points))
@@ -61,12 +64,13 @@ def prcurve(DIST_THRESHOLD):
     else:
         opt.refine_start = False
         opt.decay_start = False
+        optimizer = optim.Adam(estimator.parameters(), lr=opt.lr)
         opt.w *= opt.w_rate
 
     if opt.dataset == 'ycb':
         dataset = PoseDataset_ycb('syn_train', opt.num_points, False, opt.dataset_root, opt.noise_trans,
                                   opt.refine_start)
-        test_dataset = PoseDataset_ycb('syn_frame', opt.num_points, False, opt.dataset_root, 0.0, opt.refine_start)
+        test_dataset = PoseDataset_ycb('syn_ins', opt.num_points, False, opt.dataset_root, 0.0, opt.refine_start)
     testdataloader = torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=opt.workers)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=opt.workers)
 
@@ -79,11 +83,13 @@ def prcurve(DIST_THRESHOLD):
 
     estimator.eval()
     total_fream = 0
-    total_num = 0
-    ctp_dis_list = []
 
+    total_num = 0
+    pred_c = 1
+    ctp_dis_list = []
     for j, data in enumerate(testdataloader, 0):
-        points, choose, img, idx, target_s, target_num, target_mode, occ, cloud_, depth, cam_ins, num_pt, _ = data
+        points, choose, img, idx, target_s, target_num, target_mode, pt_num = data
+        # points, choose, img, idx, target_s, target_num, target_mode, occ, cloud_, depth, cam_ins, num_pt, _ = data
 
         points, choose, img, idx, target_s, target_num, target_mode = Variable(points).cuda(), \
                                                                       Variable(choose).cuda(), \
@@ -95,8 +101,9 @@ def prcurve(DIST_THRESHOLD):
 
         pred_cent, pred_ref, pred_foot_ref, pred_rot, pred_num, pred_mode, emb = estimator(img, points,
                                                                                            choose)
+
         target_mode = target_mode.data.cpu().numpy().reshape(-1)
-        occ = occ.data.cpu().numpy()[0]
+        # occ = occ.data.cpu().numpy()[0]
         #  ((occ < 0.7)or(occ>0.8)) : 70-80
         #  ((occ <0.6)or(occ>0.7)) :  60-70
         #  (occ>0.6) :  <60
@@ -109,9 +116,9 @@ def prcurve(DIST_THRESHOLD):
         target_cent = tmp_s[0, :]
         target_sym = tmp_s[1:, :]  # target symmetry point
         len_target_sym = np.linalg.norm((target_sym - target_cent), axis=1)
-        num_pt = num_pt.data.cpu().numpy()[0]
-        cam_ins = cam_ins.data.cpu().numpy().reshape(4)
-        depth = depth.data.cpu().numpy()
+        # num_pt = num_pt.data.cpu().numpy()[0]
+        # cam_ins = cam_ins.data.cpu().numpy().reshape(4)
+        # depth = depth.data.cpu().numpy()
 
         points = points.view(1000, 3)
         points = points.detach().cpu().data.numpy()
@@ -143,6 +150,17 @@ def prcurve(DIST_THRESHOLD):
         mean_cent = np.mean(cent_pred, axis=0)  # 1*3
         out_cent = mean_cent
 
+        #############RANSAC
+        # foot_pred = pred_foot_ref + points.reshape(1000,1,3)
+        # max_iterations = 100
+        # goal_inliers = 1000 * 0.7
+        # ransac_syms = np.zeros((3,3))
+        # for i in range(3):
+        #     xyz = foot_pred[:,i,:]
+        #     m, b = run_ransac(xyz, estimate, lambda x, y: is_inlier(x, y, 0.01), 10, goal_inliers, max_iterations)
+        #     a, b, c, d = m
+        #     ransac_syms[i, :] = np.array([a,b,c])/np.linalg.norm(np.array([a,b,c]))
+
         # ########DBSCAN
         st_time = time.time()
         print('st_time = ', st_time)
@@ -167,7 +185,7 @@ def prcurve(DIST_THRESHOLD):
             else:
                 norm_conf = 1
             norm_conf_list[i] = norm_conf
-            # sym_conf[i] = my_num[i] * norm_conf
+            sym_conf[i] = my_num[i] * norm_conf
         edtime = time.time() - st_time
         print('endtime=', edtime)
         #######RANSAC
@@ -179,14 +197,14 @@ def prcurve(DIST_THRESHOLD):
         # refine_sym = symmetry_icp_refinement(points, out_sym_, mean_cent, 0.005)
         # out_cent = refine_sym[:3]
         # out_sym = refine_sym[3:].reshape(-1, 3)
-        out_sym = np.nan_to_num(out_sym)
-        ########self-loss
-        self_conf_list = []
-        for i in range(3):
-            outlier = self_loss(out_sym[i], out_cent, points, depth, cam_ins, 100)
-            self_conf = 1 - outlier / 1000
-            self_conf_list.append(self_conf)
-            sym_conf[i] = my_num[i] *self_conf *norm_conf_list[i]
+
+        # ########self-loss
+        # self_conf_list = []
+        # for i in range(3):
+        #     outlier = self_loss(out_sym[i], out_cent, points, depth, cam_ins, 100)
+        #     self_conf = 1 - outlier / 1000
+        #     self_conf_list.append(self_conf)
+        #     sym_conf[i] = my_num[i] #*self_conf*norm_conf_list[i]
 
         my_ref = reflect(points, out_cent, out_sym)
         target_ref = reflect(points, target_cent, target_sym)
@@ -209,7 +227,7 @@ def prcurve(DIST_THRESHOLD):
         rst_list = []
 
         for m in range(out_sym.shape[0]):
-            if sym_conf[m]<0.3:
+            if sym_conf[m]<0.5:
                 continue
             for n in range(target_sym.reshape(-1, 3).shape[0]):
                 target_len = np.linalg.norm(target_vector[:, n, :], axis=1)
@@ -219,7 +237,7 @@ def prcurve(DIST_THRESHOLD):
                 dis_mean = np.mean(ctp_dis, axis=0)
                 metric_mean = dis_mean / max_len
                 rst_list.append(metric_mean)
-            ctp_dis_list.append(np.min(rst_list))
+            ctp_dis_list.append(np.max(rst_list))
             total_num+=1
 
         print('predcting frame:', j, ' object:', idx, 'target_num', target_num)
@@ -228,7 +246,7 @@ def prcurve(DIST_THRESHOLD):
     indis_list = []
     ctp_dis_list = np.array(ctp_dis_list)
 
-    # np.savetxt('./ctp_veri_dis_list-ins-0.5-max.txt', ctp_dis_list)
+    # np.savetxt('./ctp-point_dis_list-frame-0.5.txt', ctp_dis_list)
     for t in range(1, 50001):
         dis_thresh = t / 10000
         indis = len(np.where(ctp_dis_list <= dis_thresh)[0])
@@ -280,6 +298,20 @@ def run_ransac(data, estimate, is_inlier, sample_size, goal_inliers, max_iterati
     return best_model, best_ic
 
 
+def ref_pt(pt, cent, sym_vect):
+    pt = pt.reshape(1000, 1, 3)
+    cent = cent.reshape(1000, 1, 3)
+    sym_vect = sym_vect.reshape(1000, -1, 3)
+    pt_pred = np.zeros(sym_vect.shape)
+    for i in range(sym_vect.shape[1]):
+        center = cent.reshape(1000, 3, 1)
+        norm = sym_vect[:, i, :].reshape(1000, 1, 3)
+        d = -np.matmul(norm, center)
+        pt_ = pt - 2 * (np.matmul(norm, pt.reshape(1000, 3, 1)) + d) * norm
+        pt_pred[:, i, :] = pt_.reshape(1000, 3)
+    return pt_pred
+
+
 def reflect(Data, cent, sym):
     Data = Data.reshape(1000, 3)
     cent = cent.reshape(3)
@@ -302,6 +334,7 @@ def reflect(Data, cent, sym):
             ref_point[i, :] = np.array([sym_x, sym_y, sym_z])
         reflect_points[:, j, :] = ref_point
     return reflect_points
+
 
 def symmetry_icp_refinement(visual_points, pred_sym, pred_cent, icp_threshold):
     refined_pred_sym = []
@@ -399,42 +432,7 @@ def symmetry_icp_refinement(visual_points, pred_sym, pred_cent, icp_threshold):
     print('pred_sym', pred_sym)
     print('refined_pred_sym', refined_pred_sym)
     return refined_pred_sym
-def self_loss(sym,center, input_point, rgbd, instrin, depth_scale):
-    Data = input_point.reshape(1000,3)     ##read point n*6
-    unsupport_count=0
-    center = center.reshape(3)
-    sym = sym.reshape(3)
-    x1 = center[0]                  #对称面上中心点
-    y1 = center[1]
-    z1 = center[2]
-    a = sym[0]                   #对称面法向量
-    b = sym[1]
-    c = sym[2]
-    depth_image = rgbd[0]  ##depth image
-    camera_cx = instrin[0]
-    camera_cy = instrin[1]
-    camera_fx = instrin[2]
-    camera_fy = instrin[3]
-    for i in range(0, Data.shape[0]):
-        d = a*x1+b*y1+c*z1
-        t = (d-(a*Data[i][0]+b*Data[i][1]+c*Data[i][2]))/(a*a+b*b+c*c)
-        sym_x = 2 * a * t + Data[i][0]                      ##计算得到的对称点
-        sym_y = 2 * b * t + Data[i][1]
-        sym_z = 2 * c * t + Data[i][2]
-        n_pre = ((sym_x) * camera_fx) / sym_z + camera_cx   ##depth index
-        m_pre = ((sym_y) * camera_fy) / sym_z + camera_cy
-        x_pre = m_pre
-        y_pre = n_pre
-        if x_pre >= 540 or x_pre < 0 or y_pre < 0 or y_pre >= 960 or math.isnan(y_pre) or math.isnan(x_pre):  ##防止深度图索引越界
-            unsupport_count = unsupport_count+1
-        else:
-            x_pre = int(x_pre)
-            y_pre = int(y_pre)
-            ori_depth = depth_image[x_pre][y_pre]   ##depth value on surface
-            pre_depth = sym_z*depth_scale           ##depth value of symmetric point
-            if ori_depth - pre_depth > 30:         ##相差大于2.5cm计数
-                unsupport_count = unsupport_count+1
-    return unsupport_count
+
 
 if __name__ == '__main__':
     st_time = time.time()
@@ -444,20 +442,33 @@ if __name__ == '__main__':
     distance_list = [0.05, 0.1, 0.3, 0.4, 0.5]
     DIST_THRESHOLD = 15
     plt.style.use('fivethirtyeight')
-
+    # angle_list = [math.cos(math.pi / 180 * 5),math.cos(math.pi / 180 * 10),
+    #               math.cos(math.pi / 180 * 15),math.cos(math.pi / 180 * 20)]
+    # angle_list = [5, 10, 15, 20]
+    # color_list = ['steelblue', 'blue', 'black', 'green', 'yellow', 'pink']
     i = 0
+    # for DIST_THRESHOLD in dis_list:
+    #     recall, prec = prcurve(math.tan(DIST_THRESHOLD/180*math.pi))
+    #     plt.plot(recall, prec, label='distance ratio ='+str(DIST_THRESHOLD), color=color_list[i])
+    #     i += 1
+
     disin_list, thresh_list = prcurve(math.tan(DIST_THRESHOLD / 180 * math.pi))
     plt.plot(thresh_list, disin_list, linewidth=3)
 
+    # recall, prec = prcurve(DIST_THRESHOLD)
+    # plt.plot(recall, prec, label='distance=' + str(DIST_THRESHOLD), color=color_list[i])
     plot_data = np.concatenate((np.array(thresh_list).reshape(-1, 1), np.array(disin_list).reshape(-1, 1)), axis=1)
-    np.savetxt(savedir + 'eval-veri-frame-0.3-max' + '.txt', plot_data)
+    np.savetxt(savedir+ 'eval-point-ins-0.5' + '.txt', plot_data)
 
     end_time = time.time()
     print("run_time=", end_time - st_time)
-    plt.axis([0, 1, 0, 1])
+    plt.axis([0, 3, 0, 1])
     plt.legend(loc='upper right', fontsize=15)
     plt.xlabel('% counterpart error', fontsize=20)
     plt.ylabel('correspondences', fontsize=20)
     plt.tick_params(axis='both', labelsize=15)
     plt.title('counterpart eval\n', fontsize=20)
-    plt.savefig(savedir + 'ctp-veri-frame-0.3-max.png', dpi=300, bbox_inches='tight')
+    plt.savefig(savedir + 'ctp-point-ins-0.5.png', dpi=300, bbox_inches='tight')
+
+    # plt.savefig(savedir + 'new-frame_ref-mynum_normconf.png')
+    # plt.show()

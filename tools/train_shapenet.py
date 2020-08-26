@@ -5,6 +5,7 @@
 # Written by Huang
 # We build this code based on Densefusion https://github.com/j96w/DenseFusion
 # --------------------------------------------------------
+
 import argparse
 import os
 import random
@@ -13,15 +14,14 @@ import torch
 import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
-import sys
 from torch.autograd import Variable
-from datasets.scan2cad.dataset_scan2cad import SymDataset as SymDataset_scan2cad
-from lib.network import SymNet
+from datasets.shapenet.dataset_shapenet import SymDataset as SymDataset_shapenet
+from lib.network_swp import SymNet
 from lib.loss_all import Loss
 from lib.utils import setup_logger
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', type=str, default = 'scan2cad', help='shapenet or scan2cad or ycb')
+parser.add_argument('--dataset', type=str, default = 'shapenet', help='shapenet or scan2cad')
 parser.add_argument('--dataset_root', type=str, default = '', help='dataset root dir')
 parser.add_argument('--batch_size', type=int, default = 8, help='batch size')
 parser.add_argument('--workers', type=int, default = 0, help='number of data loading workers')
@@ -37,55 +37,51 @@ parser.add_argument('--start_epoch', type=int, default = 1, help='which epoch to
 opt = parser.parse_args()
 
 proj_dir = '/your/project/dir/of/symnet/'
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-device_ids = [0]
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 
 def main():
-    device_ids = range(torch.cuda.device_count())
-    print(device_ids)
     opt.manualSeed = random.randint(1, 10000)
     random.seed(opt.manualSeed)
     torch.manual_seed(opt.manualSeed)
-
-    if opt.dataset == 'scan2cad':
+    if opt.dataset == 'shapenet':
         opt.num_points = 1000  # number of points on the input pointcloud
-        opt.outf = proj_dir + 'trained_models/scan2cad'  # folder to save trained models
-        opt.log_dir = proj_dir + 'experiments/logs/scan2cad'  # folder to save logs
+        opt.outf = proj_dir+'trained_models/shapenet/swp/'  # folder to save trained models
+        opt.log_dir = proj_dir+'experiments/logs/shapenet/swp/'  # folder to save logs
         opt.repeat_epoch = 1  # number of repeat times for one epoch training
-    elif opt.dataset == 'ycb':
-        opt.num_points = 1000  # number of points on the input pointcloud
-        opt.outf = proj_dir + 'trained_models/ycb'  # folder to save trained models
-        opt.log_dir = proj_dir + 'visualization'  # folder to save logs
-        opt.repeat_epoch = 1  # number of repeat times for one epoch training
+    elif opt.dataset == 'scan2cad':
+        opt.num_points = 500
+        opt.outf = proj_dir+'trained_models/cad'
+        opt.log_dir = proj_dir+'experiments/logs/cad'
+        opt.repeat_epoch = 20
     else:
         print('Unknown dataset')
         return
 
     estimator = SymNet(num_points = opt.num_points)
     estimator = estimator.cuda()
-    estimator = torch.nn.DataParallel(estimator, device_ids=device_ids )
+    estimator = torch.nn.DataParallel(estimator)
 
     if opt.resume_posenet != '':
         estimator.load_state_dict(torch.load('{0}/{1}'.format(opt.outf, opt.resume_posenet)))
 
-    opt.refine_start = False
     opt.decay_start = False
     optimizer = optim.Adam(estimator.parameters(), lr=opt.lr)
     opt.w *= opt.w_rate
 
-    cad_train_dataset = SymDataset_scan2cad('cad_train', opt.num_points, False, opt.dataset_root, opt.noise_trans, opt.refine_start)
-    cad_test_dataset = SymDataset_scan2cad('cad_frame', opt.num_points, False, opt.dataset_root, 0.0, opt.refine_start)
+    syn_train_dataset = SymDataset_shapenet('syn_train', opt.num_points, False, opt.dataset_root, opt.noise_trans, False)
+    syn_test_dataset = SymDataset_shapenet('syn_frame', opt.num_points, False, opt.dataset_root, 0.0, False)
 
-    dataloader = torch.utils.data.DataLoader(cad_train_dataset, batch_size=1, shuffle=False, num_workers=opt.workers)
-    testdataloader = torch.utils.data.DataLoader(cad_test_dataset, batch_size=1, shuffle=False, num_workers=opt.workers)
+    dataloader = torch.utils.data.DataLoader(syn_train_dataset, batch_size=1, shuffle=True, num_workers=opt.workers)
+    testdataloader = torch.utils.data.DataLoader(syn_test_dataset, batch_size=1, shuffle=False, num_workers=opt.workers)
 
-    opt.sym_list = cad_train_dataset.get_sym_list()
-    opt.num_points_mesh = cad_train_dataset.get_num_points_mesh()
+    opt.num_points_mesh = syn_train_dataset.get_num_points_mesh()
 
-    print('>>>>>>>>----------Dataset loaded!---------<<<<<<<<\nlength of the training set: {0}\nlength of the testing set: {1}\n'.format(len(cad_train_dataset), len(cad_test_dataset)))
+    print('>>>>>>>>----------Dataset loaded!---------<<<<<<<<\nlength of the training set: {0}\nlength of the testing set: {1}\n'.format(len(syn_train_dataset), len(syn_test_dataset)))
 
     criterion = Loss(opt.num_points_mesh)
+
     best_test = 0
+
     st_time = time.time()
 
     for epoch in range(opt.start_epoch, opt.nepoch):
@@ -104,18 +100,17 @@ def main():
 
         for rep in range(opt.repeat_epoch):
             for i, data in enumerate(dataloader, 0):
-                points, choose, img,  idx, target_s, target_num, target_mode,pt_num = data
+                points, choose, img,  idx, target_s, target_num, target_mode = data
 
-                points, choose, img, idx, target_s, target_num, target_mode = Variable(points).cuda(), \
+                points, choose, img, idx, target_s, target_mode = Variable(points).cuda(), \
                                                                               Variable(choose).cuda(), \
                                                                               Variable(img).cuda(), \
                                                                               Variable(idx).cuda(), \
                                                                               Variable(target_s).cuda(), \
-                                                                              Variable(target_num).cuda(), \
                                                                               Variable(target_mode).cuda()
 
-                pred_cent, pred_ref, pred_foot_ref, pred_rot, pred_num, pred_mode, emb = estimator(img, points,
-                                                                                                           choose)
+                pred_cent, pred_ref, pred_foot_ref, pred_rot, pred_num, pred_mode, emb = estimator(img, points,choose)
+
                 loss, dis, error_cent, loss_ref, error_ref, error_num, error_mode = criterion(
                     pred_cent, pred_ref, pred_foot_ref, pred_rot,
                     pred_num, pred_mode, target_s,
@@ -172,7 +167,8 @@ def main():
         estimator.eval()
 
         for j, data in enumerate(testdataloader, 0):
-            points, choose, img, idx, target_s, target_num,target_mode,pt_num = data
+            points, choose, img, idx, target_s, target_num,target_mode = data
+
             points, choose, img, idx, target_s, target_num, target_mode = Variable(points).cuda(), \
                                                                           Variable(choose).cuda(), \
                                                                           Variable(img).cuda(), \
@@ -181,8 +177,7 @@ def main():
                                                                           Variable(target_num).cuda(), \
                                                                           Variable(target_mode).cuda()
 
-            pred_cent, pred_ref, pred_foot_ref, pred_rot, pred_num, pred_mode, emb = estimator(img, points,
-                                                                                                       choose)
+            pred_cent, pred_ref, pred_foot_ref, pred_rot, pred_num, pred_mode, emb = estimator(img, points,choose)
             loss, dis, error_cent, loss_ref, error_ref, error_num, error_mode = criterion(
                 pred_cent, pred_ref, pred_foot_ref, pred_rot,
                 pred_num, pred_mode, target_s,
