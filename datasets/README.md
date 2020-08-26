@@ -2,25 +2,25 @@
 
 ### Network inputs:
 **ShapeNet**
-- SUBSET/CLASS_ID/INSTANCE_ID/*-color.png: rendered color image
-- SUBSET/CLASS_ID/INSTANCE_ID/*-depth.exr: rendered depth image
-- SUBSET/CLASS_ID/INSTANCE_ID/*-k.txt: intrinsic parameters
-- SUBSET/CLASS_ID/INSTANCE_ID/*-rt.txt: extrinsic parameters of the cropped image
-- SUBSET/CLASS_ID/INSTANCE_ID/*-color-crop.png: cropped color image
-- SUBSET/CLASS_ID/INSTANCE_ID/*-depth-crop.png: cropped depth image
-- SUBSET/CLASS_ID/INSTANCE_ID/*-color-crop-occlusion.png: cropped color image with occlusion
-- SUBSET/CLASS_ID/INSTANCE_ID/*-depth-crop-occlusion.png: cropped depth image with occlusion
-- SUBSET/CLASS_ID/INSTANCE_ID/*-k-crop.txt: intrinsic parameters of the cropped image
+- SUBSET/CLASS_ID/INSTANCE_ID/VIEW_ID-color.png: rendered color image
+- SUBSET/CLASS_ID/INSTANCE_ID/VIEW_ID-depth.exr: rendered depth image
+- SUBSET/CLASS_ID/INSTANCE_ID/VIEW_ID-k.txt: intrinsic parameters
+- SUBSET/CLASS_ID/INSTANCE_ID/VIEW_ID-rt.txt: extrinsic parameters of the cropped image
+- SUBSET/CLASS_ID/INSTANCE_ID/VIEW_ID-color-crop.png: cropped color image
+- SUBSET/CLASS_ID/INSTANCE_ID/VIEW_ID-depth-crop.png: cropped depth image
+- SUBSET/CLASS_ID/INSTANCE_ID/VIEW_ID-color-crop-occlusion.png: cropped color image with occlusion
+- SUBSET/CLASS_ID/INSTANCE_ID/VIEW_ID-depth-crop-occlusion.png: cropped depth image with occlusion
+- SUBSET/CLASS_ID/INSTANCE_ID/VIEW_ID-k-crop.txt: intrinsic parameters of the cropped image
 - SUBSET/CLASS_ID/INSTANCE_ID/info.txt: shapenet instance id, rendering details
 
 The scale factor of depth image is 100.
 
 **ScanNet**
 Network inputs:
-- SUBSET/SCENE_ID/*-color.jpg: color image
-- SUBSET/CLASS_ID/*-depth.png: depth image
-- SUBSET/CLASS_ID/*-label.png: object segmentation of the depth image
-- SUBSET/CLASS_ID/*-meta.mat: intrinsic, extrinsic parameters, scale factor, object center, shapenet v2 instance id, object center in image space, scale factor of depth image
+- SUBSET/SCENE_ID/VIEW_ID-color.jpg: color image
+- SUBSET/CLASS_ID/VIEW_ID-depth.png: depth image
+- SUBSET/CLASS_ID/VIEW_ID-label.png: object segmentation of the depth image
+- SUBSET/CLASS_ID/VIEW_ID-meta.mat: intrinsic, extrinsic parameters, scale factor, object center, shapenet v2 instance id, object center in image space, scale factor of depth image
 
 **YCB**
 Network inputs:
