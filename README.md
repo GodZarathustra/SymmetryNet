@@ -45,5 +45,5 @@ python tools/evaluation/eval_rot_shapenet.py
 ```
 
 ## Pretrained model & data download
-The pretrained models and data can be found at [model](https://) and [data](https://)
+The pretrained models and data can be found at [model](https://www.dropbox.com/sh/522ukzxe8nfmomv/AAArPKaoeccJOBv6z7ec1FH4a?dl=0) and [data](https://www.dropbox.com/sh/mt0ip97uotxl8p3/AADrh17UrqEfX1qALawhu7Sba?dl=0)
 
