@@ -46,11 +46,11 @@ python tools/train_shapenet.py --dataset_root= your/folder/to/shapnet/dataset
 ```
 To train the network with the default parameter on ycb dataset, run<br>
 ```
-python tools/train_shapenet.py --dataset_root= your/folder/to/ycb/dataset
+python tools/train_ycb.py --dataset_root= your/folder/to/ycb/dataset
 ```
 To train the network with the default parameter on scannet dataset, run<br>
 ```
-python tools/train_shapenet.py --dataset_root= your/folder/to/scannet/dataset
+python tools/train_scannet.py --dataset_root= your/folder/to/scannet/dataset
 ```
 
 ## Evaluation
