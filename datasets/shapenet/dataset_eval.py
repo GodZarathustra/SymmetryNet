@@ -8,45 +8,25 @@ import torchvision.transforms as transforms
 
 import numpy.ma as ma
 
-proj_dir = '/home/dell/yifeis/pose_estimation/densefusion_syn_test/'
+proj_dir = '/home/dell/yifeis/symnet/'
 
 class SymDataset(data.Dataset):
     def __init__(self, mode, num_pt, add_noise, root, noise_trans, refine):
-        if mode[:6]== 'result':
-            tmp_path = '/home/dell/yifeis/pose_estimation/densefusion_syn_test/tools/'
-            self.path = tmp_path + 'baseline4_result_' + str(int(mode[6:8])) + '_' + mode[8:] + '.txt'
         if mode == 'train':
-            self.path = proj_dir +'datasets/ycb/dataset_config/train_data_list.txt'
-        elif mode == 'test':
-            self.path = proj_dir +'datasets/ycb/dataset_config/test_data_list.txt'
-        elif mode == 'syn_train':
-            self.path = proj_dir +'datasets/ycb/dataset_config/syn_train_list.txt'
-        elif mode == 'syn_ins':
-            self.path = proj_dir +'datasets/ycb/dataset_config/syn_ins_list.txt'
-        elif mode == 'syn_frame':
-            self.path = proj_dir +'datasets/ycb/dataset_config/syn_val_list.txt'
-        elif mode == 'syn_class':
-            self.path = proj_dir +'datasets/ycb/dataset_config/syn_newclass_list.txt'
-        elif mode == 'syn_class_unfaml':
-            self.path = proj_dir + 'datasets/ycb/dataset_config/syn_class_unfaml.txt'
-        elif mode == 'syn_class_faml':
-            self.path = proj_dir + 'datasets/ycb/dataset_config/syn_class_faml.txt'
-        elif mode == 'visual':
-            self.path = proj_dir +'datasets/ycb/dataset_config/visual_data_list.txt'
-        elif mode == 'under60':
-            self.path = proj_dir +"datasets/ycb/dataset_config/under60_frames.txt"
-        elif mode == 'f60t80':
-            self.path = proj_dir +"datasets/ycb/dataset_config/f60t80_frames.txt"
-        elif mode == 'up80':
-            self.path = proj_dir +"datasets/ycb/dataset_config/up80_frames.txt"
+            self.path = proj_dir + 'datasets/shapenet/dataset_config/split_valid2/train_ls.txt'
+        elif mode == 'holdout_ins':
+            self.path = proj_dir + 'datasets/shapenet/dataset_config/split_valid2/holdout_ins_ls.txt'
+        elif mode == 'holdout_view':
+            self.path = proj_dir + 'datasets/shapenet/dataset_config/split_valid2/holdout_view_ls.txt'
+        elif mode == 'holdout_class':
+            self.path = proj_dir + 'datasets/shapenet/dataset_config/split_valid2/holdout_class_ls.txt'
+
         self.num_pt = num_pt
         self.root = root
         self.add_noise = add_noise
         self.noise_trans = noise_trans
 
         self.list = []
-        self.real = []
-        self.syn = []
         input_file = open(self.path)
         while 1:
             input_line = input_file.readline()
@@ -54,16 +34,11 @@ class SymDataset(data.Dataset):
                 break
             if input_line[-1:] == '\n':
                 input_line = input_line[:-1]
-            if input_line[:5] == 'syn_images_20views1/':
-                self.real.append(input_line)
-            else:
-                self.syn.append(input_line)
+
             self.list.append(input_line)
         input_file.close()
 
         self.length = len(self.list)
-        self.len_real = len(self.real)
-        self.len_syn = len(self.syn)
 
         self.xmap = np.array([[j for i in range(960)] for j in range(540)])  # 480*640, xmap[i,:]==i
         self.ymap = np.array([[i for i in range(960)] for j in range(540)])  # 480*640, ymap[j,:]==j
@@ -103,58 +78,43 @@ class SymDataset(data.Dataset):
             '022': '04379243'}
         # print(len(self.list))
         self.no_occ = []
+
     def __getitem__(self, index):
-        while 1:
-            print('index',index)
-            if os.path.exists('{0}/{1}-rt.txt'.format(self.root, self.list[index]))==False:
-                print('{0}/{1}-rt.txt'.format(self.root, self.list[index]))
-            if os.path.exists('{0}/{1}-rt.txt'.format(self.root, self.list[index])) and \
-                os.path.exists('{0}/{1}-depth-crop-occlusion.png'.format(self.root, self.list[index])) and \
-                os.path.exists('{0}/{1}-k-crop.txt'.format(self.root, self.list[index])) and \
-                os.path.exists('{0}/{1}-color-crop-occlusion.png'.format(self.root, self.list[index])) and\
-                os.path.exists('{0}/{1}-occlusion.txt'.format(self.root, self.list[index])):
 
-                occ = np.loadtxt('{0}/{1}-occlusion.txt'.format(self.root, self.list[index]))
-                rt = np.loadtxt('{0}/{1}-rt.txt'.format(self.root, self.list[index]))
-                check_rt = np.zeros((4, 4))
-                check_depth = 255*np.ones((540, 960, 3))
-                depth_ = cv2.imread('{0}/{1}-depth-crop-occlusion.png'.format(self.root, self.list[index]))
-                # depth_ = cv2.resize(depth_, (640,480))
-                cam_ = np.loadtxt('{0}/{1}-k-crop.txt'.format(self.root, self.list[index]))
-                if cam_.reshape(-1).shape[0] != 9:
-                    print('{0}/{1}-k-crop.txt'.format(self.root, self.list[index]))
+        occ = np.loadtxt('{0}/{1}-occlusion.txt'.format(self.root, self.list[index]))
+        rt = np.loadtxt('{0}/{1}-rt.txt'.format(self.root, self.list[index]))
+        check_rt = np.zeros((4, 4))
+        check_depth = 255*np.ones((540, 960, 3))
+        depth_ = cv2.imread('{0}/{1}-depth-crop-occlusion.png'.format(self.root, self.list[index]))
+        # depth_ = cv2.resize(depth_, (640,480))
+        cam_ = np.loadtxt('{0}/{1}-k-crop.txt'.format(self.root, self.list[index]))
+        if cam_.reshape(-1).shape[0] != 9:
+            print('{0}/{1}-k-crop.txt'.format(self.root, self.list[index]))
 
-                input_file = self.list[index]
-                class_key = input_file[20:23]
-                input_id = int(input_file[20:23])
-                ins_num = int(input_file[24:28])
-                cls_idx = input_id
-                class_name = self.class_id[class_key]
-                instance_ls = self.name_list[cls_idx][1:-1].split(",")
-                ins_name = instance_ls[ins_num][2:-1]
-                sym_dir = '/home/dell/dy/shapenetcore/'
-                sym_file = sym_dir + class_name + '/' + ins_name + '/' + 'model_sym.txt'
-                if os.path.exists(sym_file) == False:
-                    index += 1
-                    continue
-                model_s = np.loadtxt(sym_file)
-                syms = model_s[1:, :]
-                check_ = np.zeros((4, 3))
-                check_sym = (syms != check_)
-                nozero = np.nonzero(check_sym)
-                row_id = nozero[0]
-                if (rt == check_rt).all() or (depth_ == check_depth).all():
-                    index += 1
-                elif (row_id.shape[0] != 0) and (model_s.shape[0] == 5) and(cam_.reshape(-1).shape[0]==9):
-                    break
-                else:
-                    index += 1
-            else:
-                index += 1
         input_file = self.list[index]
-        class_key = input_file[20:23]
-        input_id = int(input_file[20:23])
-        ins_num = int(input_file[24:28])
+        # class_key = input_file[20:23]
+        # input_id = int(input_file[20:23])
+        # ins_num = int(input_file[24:28])
+        class_key = input_file[:3]
+        input_id = int(class_key)
+        ins_num = int(input_file[4:8])
+        cls_idx = input_id
+        class_name = self.class_id[class_key]
+        instance_ls = self.name_list[cls_idx][1:-1].split(",")
+        ins_name = instance_ls[ins_num][2:-1]
+        sym_dir = '/home/dell/yifeis/shapenetcore/'
+        sym_file = sym_dir + class_name + '/' + ins_name + '/' + 'model_sym.txt'
+        model_s = np.loadtxt(sym_file)
+        syms = model_s[1:, :]
+        check_ = np.zeros((4, 3))
+        check_sym = (syms != check_)
+        nozero = np.nonzero(check_sym)
+        row_id = nozero[0]
+
+        input_file = self.list[index]
+        class_key = input_file[:3]
+        input_id = int(class_key)
+        ins_num = int(input_file[4:8])
         img_ = cv2.imread('{0}/{1}-color-crop-occlusion.png'.format(self.root, self.list[index]))  # 540*960
         img = img_
 
@@ -209,15 +169,15 @@ class SymDataset(data.Dataset):
         multi_s_point = multi_s + center
         multi_s = np.vstack([center, multi_s_point])
 
-        choose = mask[rmin:rmax, cmin:cmax].flatten().nonzero()[0]  # 提取物体的mask维度
+        choose = mask[rmin:rmax, cmin:cmax].flatten().nonzero()[0]
         ori = choose
-        if len(choose) > self.num_pt:  # mask的点数量大于1000,则取前1000
+        if len(choose) > self.num_pt:
             c_mask = np.zeros(len(choose), dtype=int)
             c_mask[:self.num_pt] = 1
             np.random.shuffle(c_mask)
             choose = choose[c_mask.nonzero()]
         else:
-            choose = np.pad(choose, (0, self.num_pt - len(choose)), 'wrap')  # 补维数,表示(0.1）两个维度分别补几维
+            choose = np.pad(choose, (0, self.num_pt - len(choose)), 'wrap')
 
         depth_masked = depth[rmin:rmax, cmin:cmax].flatten()[choose][:, np.newaxis].astype \
             (np.float32)  # (1000,1)get masked depth
@@ -250,7 +210,7 @@ class SymDataset(data.Dataset):
 
         # s_len = np.linalg.norm(target_s[1]-target_s[0])
         target_num = target_s.shape[0 ] -1
-
+        # print('load one')
         return torch.from_numpy(cloud.astype(np.float32)), \
                torch.LongTensor(choose.astype(np.int32)), \
                self.norm(torch.from_numpy(img_masked.astype(np.float32))), \

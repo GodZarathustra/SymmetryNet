@@ -3,7 +3,7 @@
 # Symmetries of 3D Shapes from Single-View RGB-D Images
 # Licensed under The MIT License [see LICENSE for details]
 # Written by Huang
-# We build this code based on Densefusion https://github.com/j96w/DenseFusion
+# This code was build based on Densefusion https://github.com/j96w/DenseFusion
 # --------------------------------------------------------
 
 import argparse
@@ -14,39 +14,43 @@ import torch
 import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
+import sys
 from torch.autograd import Variable
-from datasets.shapenet.dataset_shapenet import SymDataset as SymDataset_shapenet
+from datasets.shapenet.dataset_back import SymDataset as SymDataset_shapenet
 from lib.network_swp import SymNet
-from lib.loss_all import Loss
+from lib.loss import Loss
 from lib.utils import setup_logger
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default = 'shapenet', help='shapenet or scan2cad')
-parser.add_argument('--dataset_root', type=str, default = '', help='dataset root dir')
-parser.add_argument('--batch_size', type=int, default = 8, help='batch size')
-parser.add_argument('--workers', type=int, default = 0, help='number of data loading workers')
+parser.add_argument('--dataset_root', type=str, default = 'folder/to/your/dataset')
+parser.add_argument('--batch_size', type=int, default = 16, help='batch size')
+parser.add_argument('--workers', type=int, default = 32, help='number of data loading workers')
 parser.add_argument('--lr', default=0.00005, help='learning rate')
 parser.add_argument('--lr_rate', default=0.3, help='learning rate decay rate')
 parser.add_argument('--w', default=1, help='learning rate')
 parser.add_argument('--w_rate', default=0.9, help='learning rate decay rate')
 parser.add_argument('--decay_margin', default=40, help='margin to decay lr & w')
 parser.add_argument('--noise_trans', default=0.03, help='range of the random noise of translation added to the training data')
+parser.add_argument('--iteration', type=int, default = 2, help='number of refinement iterations')
 parser.add_argument('--nepoch', type=int, default=500, help='max number of epochs to train')
-parser.add_argument('--resume_posenet', type=str, default = '',  help='resume PoseNet model')
+parser.add_argument('--resume_symnet', type=str, default = '',  help='resume SymNet model')
 parser.add_argument('--start_epoch', type=int, default = 1, help='which epoch to start')
 opt = parser.parse_args()
 
-proj_dir = '/your/project/dir/of/symnet/'
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
+proj_dir = 'folder/to/your/project'
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 def main():
+    # device_ids = range(torch.cuda.device_count())
+    # print(device_ids)
     opt.manualSeed = random.randint(1, 10000)
     random.seed(opt.manualSeed)
     torch.manual_seed(opt.manualSeed)
     if opt.dataset == 'shapenet':
         opt.num_points = 1000  # number of points on the input pointcloud
-        opt.outf = proj_dir+'trained_models/shapenet/swp/'  # folder to save trained models
-        opt.log_dir = proj_dir+'experiments/logs/shapenet/swp/'  # folder to save logs
+        opt.outf = proj_dir+'trained_models/shapenet/'  # folder to save trained models
+        opt.log_dir = proj_dir+'experiments/logs/shapenet/'  # folder to save logs
         opt.repeat_epoch = 1  # number of repeat times for one epoch training
     elif opt.dataset == 'scan2cad':
         opt.num_points = 500
@@ -56,27 +60,29 @@ def main():
     else:
         print('Unknown dataset')
         return
-
+    # torch.distributed.init_process_group(backend='nccl', init_method='tcp://localhost:23456', rank=0, world_size=1)
     estimator = SymNet(num_points = opt.num_points)
     estimator = estimator.cuda()
-    estimator = torch.nn.DataParallel(estimator)
+    # estimator = torch.nn.DataParallel(estimator)
+    # estimator = torch.nn.parallel.DistributedDataParallel(estimator)
+    #
 
-    if opt.resume_posenet != '':
-        estimator.load_state_dict(torch.load('{0}/{1}'.format(opt.outf, opt.resume_posenet)))
+    if opt.resume_symnet != '':
+        estimator.load_state_dict(torch.load('{0}/{1}'.format(opt.outf, opt.resume_symnet)))
 
     opt.decay_start = False
     optimizer = optim.Adam(estimator.parameters(), lr=opt.lr)
     opt.w *= opt.w_rate
 
-    syn_train_dataset = SymDataset_shapenet('syn_train', opt.num_points, False, opt.dataset_root, opt.noise_trans, False)
-    syn_test_dataset = SymDataset_shapenet('syn_frame', opt.num_points, False, opt.dataset_root, 0.0, False)
+    train_dataset = SymDataset_shapenet('train', opt.num_points, False, opt.dataset_root, opt.noise_trans, False)
+    test_dataset = SymDataset_shapenet('holdout_view', opt.num_points, False, opt.dataset_root, 0.0, False)
 
-    dataloader = torch.utils.data.DataLoader(syn_train_dataset, batch_size=1, shuffle=True, num_workers=opt.workers)
-    testdataloader = torch.utils.data.DataLoader(syn_test_dataset, batch_size=1, shuffle=False, num_workers=opt.workers)
+    dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=1, shuffle=True, num_workers=opt.workers)
+    testdataloader = torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=opt.workers)
 
-    opt.num_points_mesh = syn_train_dataset.get_num_points_mesh()
+    opt.num_points_mesh = train_dataset.get_num_points_mesh()
 
-    print('>>>>>>>>----------Dataset loaded!---------<<<<<<<<\nlength of the training set: {0}\nlength of the testing set: {1}\n'.format(len(syn_train_dataset), len(syn_test_dataset)))
+    print('>>>>>>>>----------Dataset loaded!---------<<<<<<<<\nlength of the training set: {0}\nlength of the testing set: {1}\n'.format(len(train_dataset), len(test_dataset)))
 
     criterion = Loss(opt.num_points_mesh)
 
@@ -148,7 +154,7 @@ def main():
                     train_loss_ref = 0
 
                 if train_count != 0 and train_count % 1000 == 0:
-                    torch.save(estimator.state_dict(), '{0}/pose_model_current.pth'.format(opt.outf))
+                    torch.save(estimator.state_dict(), '{0}/sym_model_current.pth'.format(opt.outf))
 
         print('>>>>>>>>----------epoch {0} train finish---------<<<<<<<<'.format(epoch))
 
@@ -156,7 +162,7 @@ def main():
         logger = setup_logger('epoch%d_test' % epoch, os.path.join(opt.log_dir, 'epoch_%d_test_log.txt' % epoch))
         logger.info('Test time {0}'.format(time.strftime("%Hh %Mm %Ss", time.gmtime(time.time() - st_time)) + ', ' + 'Testing started'))
 
-        test_dis = 0.0  # add symmetry dis
+        test_dis = 0.0
         test_err_num = 0.0
         test_err_mode = 0.0
         test_err_ref = 0.0
@@ -215,7 +221,7 @@ def main():
                     time.gmtime(time.time() - st_time)), epoch, test_dis, test_err_num, test_err_mode, test_err_cent,test_err_ref, test_loss_ref, pect_ang_tps))
         if pect_ang_tps >= best_test:
             best_test = pect_ang_tps
-            torch.save(estimator.state_dict(), '{0}/pose_model_{1}_{2}.pth'.format(opt.outf, epoch, test_dis))
+            torch.save(estimator.state_dict(), '{0}/sym_model_{1}_{2}.pth'.format(opt.outf, epoch, test_dis))
 
             print(epoch, '>>>>>>>>----------BEST TEST MODEL SAVED---------<<<<<<<<')
 

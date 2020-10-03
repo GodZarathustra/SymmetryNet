@@ -10,16 +10,16 @@ import numpy.ma as ma
 import scipy.io as scio
 
 
-proj_dir = '/home/dell/yifeis/pose_estimation/densefusion_syn_test/'
+proj_dir = '/home/dell/yifeis/symnet/'
 
 class SymDataset(data.Dataset):
     def __init__(self, mode, num_pt, add_noise, root, noise_trans, refine):
         if mode == 'cad_train':
-            self.path = proj_dir +'datasets/ycb/dataset_config/scan2cad_train_list.txt'
+            self.path = proj_dir +'datasets/scan2cad/dataset_config/scan2cad_train_list.txt'
         elif mode == 'cad_scene':
-            self.path = proj_dir +'datasets/ycb/dataset_config/scan2cad_scene_list.txt'
+            self.path = proj_dir +'datasets/scan2cad/dataset_config/scan2cad_scene_list.txt'
         elif mode == 'cad_frame':
-            self.path = proj_dir +'datasets/ycb/dataset_config/scan2cad_frame_list.txt'
+            self.path = proj_dir +'datasets/scan2cad/dataset_config/scan2cad_frame_list.txt'
 
         self.num_pt = num_pt
         self.root = root
@@ -77,7 +77,7 @@ class SymDataset(data.Dataset):
                 obj_choose = meta['cls_dirs'][idx]
                 class_name = obj_choose[:8]
                 ins_name = obj_choose[9:]
-                sym_dir = '/home/dell/dy/ShapeNetCore.v2/'
+                sym_dir = '/home/dell/yifeis/ShapeNetCore.v2/'
                 sym_file = sym_dir + class_name + '/' + ins_name.strip() + '/' + 'models/' + 'model_normalized_sym.txt'
                 if os.path.exists(sym_file) == False:
                     self.flag = 0
@@ -192,7 +192,6 @@ class SymDataset(data.Dataset):
         obj_idx = self.categories.index(class_name)
 
         occ = meta['occlusion_ratios'][0][idx]
-        points, choose, img, idx, target_s, target_num, target_mode, pt_num
         return torch.from_numpy(cloud.astype(np.float32)), \
                torch.LongTensor(choose.astype(np.int32)), \
                self.norm(torch.from_numpy(img_masked.astype(np.float32))), \
