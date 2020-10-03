@@ -25,15 +25,15 @@ This repository includes:
   * **lib/tools.py**: functions for the operation of rotation and reflection
   * **lib/verification.py**: verification of the rotational and reflectional symmetries
 * **datasets**: the dataloader and training/testing lists
-  * **datasets/shapenet/dataset_config/*.txt**: training and testing splits for shapenet dataset, the testing splits includ holdout view/instance/category
   * **datasets/shapenet/dataset.py**: the training dataloader for shapnet dataset
   * **datasets/shapenet/dataset_eval.py**: the evaluation dataloader for shapnet dataset
-  * **datasets/ycb/dataset_config/*.txt**: training and testing splits for shapenet dataset,the training/testing splits fallow the ycb defult settings
+    * **datasets/shapenet/dataset_config/*.txt**: training and testing splits for shapenet dataset, the testing splits includ holdout view/instance/category
   * **datasets/ycb/dataset.py**: the training dataloader for ycb dataset
   * **datasets/ycb/dataset_eval.py**: the evaluation dataloader for ycb dataset
-  * **datasets/scannet/dataset_config/*.txt**: training and testing splits for scannet dataset,the testing splits includ holdout view/scene
+    * **datasets/ycb/dataset_config/*.txt**: training and testing splits for shapenet dataset,the training/testing splits fallow the ycb defult settings
   * **datasets/shapenet/dataset.py**: the training dataloader for scannet dataset
   * **datasets/shapenet/dataset_eval.py**: the evaluation dataloader for scannet dataset
+    * **datasets/scannet/dataset_config/*.txt**: training and testing splits for scannet dataset,the testing splits includ holdout view/scene
   
 ## Environments
 pytorch>=0.4.1
@@ -59,11 +59,32 @@ To evaluate the model with our metric on shapenet, for reflectional symmetry, ru
 ```
 python tools/evaluation/eval_ref_shapenet.py
 ```
-
 for rotational symmetry, run<br>
 
 ```
 python tools/evaluation/eval_rot_shapenet.py
+```
+To evaluate the model with our metric on ycb, for reflectional symmetry, run<br>
+
+```
+python tools/evaluation/eval_ref_ycb.py
+```
+
+for rotational symmetry, run<br>
+
+```
+python tools/evaluation/eval_rot_ycb.py
+```
+To evaluate the model with our metric on scannet, for reflectional symmetry, run<br>
+
+```
+python tools/evaluation/eval_ref_scannet.py
+```
+
+for rotational symmetry, run<br>
+
+```
+python tools/evaluation/eval_rot_scannet.py
 ```
 
 ## Pretrained model & data download
