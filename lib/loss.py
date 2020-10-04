@@ -149,7 +149,7 @@ def ref_pt(pt, cent, sym_vect):
 def label_trans(input):
     if input.shape[0] == 3:
         label = torch.tensor([1, 1, 1])
-    if input.shape[0] == 2:
+    elif input.shape[0] == 2:
         if input.equal(torch.tensor([0, 1])) or input.equal(torch.tensor([1, 0])):
             label = torch.tensor([1, 1, 0])
 
@@ -158,7 +158,7 @@ def label_trans(input):
 
         if input.equal(torch.tensor([1, 2])) or input.equal(torch.tensor([2, 1])):
             label = torch.tensor([0, 1, 1])
-    if input.shape[0] == 1:
+    else: #input.shape[0] == 1:
         if input.equal(torch.tensor([0])):
             label = torch.tensor([1, 0, 0])
 
@@ -167,6 +167,12 @@ def label_trans(input):
 
         if input.equal(torch.tensor([2])):
             label = torch.tensor([0, 0, 1])
+        else:
+            try:
+                return label
+            except Exception as e:
+                print(e.args)
+                print(input)
     return label
 
 class Loss(_Loss):
