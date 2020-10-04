@@ -39,6 +39,18 @@ This repository includes:
 pytorch>=0.4.1
 python >=3.6
 
+## Datasets
+* **ShapeNet dataset**
+  * **shapenetcore**: this folder saves the models and their ground truth symmetries for each instance
+  * **rendered_data**: this folder saves the rgbd images that we rendered for each instance, including their ground truth pose and camera intrinsic matrix, etc.
+  * **name_list.txt**: this file saves the correspondence between the name of instances and their ID in this project(the names are too long to identify)
+  
+* **YCB dataset**
+  * **models**: this folder saves the ground truth model symmetry for each instance
+  * **data**: this folder saves the rgbd videos and the ground truth poses and camera information
+  * **classes.txt**: this file saves the correspondence between the name of YCB objects and their *.xyz models
+  * **symmetries.txt**: this file saves all the ground truth symmetries for ycb object models
+
 ## Training
 To train the network with the default parameter on shapenet dataset, run<br>
 ```
