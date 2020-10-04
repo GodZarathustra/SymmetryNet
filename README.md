@@ -102,7 +102,7 @@ python tools/evaluation/eval_rot_scannet.py
 ## Pretrained model & data download
 The pretrained models and data can be found at [model](https://www.dropbox.com/sh/522ukzxe8nfmomv/AAArPKaoeccJOBv6z7ec1FH4a?dl=0) and [data](https://www.dropbox.com/sh/mt0ip97uotxl8p3/AADrh17UrqEfX1qALawhu7Sba?dl=0)
 
-## Loss:
+## Loss items in our paper:
 > center-loss + ref-ctp-loss + ref-foot-loss + rot-foot-loss + num-loss + mode-loss + ref-co-loss + rot-co-loss
 
 * **ref-ctp-loss** : the counterpart error,i.e. ctp-dis/ctp-len
