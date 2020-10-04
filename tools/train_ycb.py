@@ -14,8 +14,8 @@ from lib.loss import Loss
 from lib.utils import setup_logger
 import math
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', type=str, default = 'ycb', help='ycb or linemod')
-parser.add_argument('--dataset_root', type=str, default = '/home/demian/ycb', help='dataset root dir (''YCB_Video_Dataset'' or ''Linemod_preprocessed'')')
+parser.add_argument('--dataset', type=str, default = 'ycb', help='ycb')
+parser.add_argument('--dataset_root', type=str, default = 'your/ycb/data/dir', help='dataset root dir (''YCB_Video_Dataset'')')
 parser.add_argument('--batch_size', type=int, default = 8, help='batch size')
 parser.add_argument('--workers', type=int, default = 10, help='number of data loading workers')
 parser.add_argument('--lr', default=0.0001, help='learning rate')
@@ -43,8 +43,8 @@ def main():
     if opt.dataset == 'ycb':
         opt.num_objects = 21  # number of object classes in the dataset
         opt.num_points = 1000  # number of points on the input pointcloud
-        opt.outf = proj_dir+'trained_models/ycb/swp2'  # folder to save trained models
-        opt.log_dir = proj_dir+'experiments/logs/ycb/swp2'  # folder to save logs
+        opt.outf = proj_dir+'trained_models/ycb'  # folder to save trained models
+        opt.log_dir = proj_dir+'experiments/logs/ycb'  # folder to save logs
         opt.repeat_epoch = 1  # number of repeat times for one epoch training
     else:
         print('Unknown dataset')
@@ -56,23 +56,14 @@ def main():
     if opt.resume_symnet != '':
         estimator.load_state_dict(torch.load('{0}/{1}'.format(opt.outf, opt.resume_symnet)))
 
-    if opt.resume_refinenet != '':
-        # refiner.load_state_dict(torch.load('{0}/{1}'.format(opt.outf, opt.resume_refinenet)))
-        opt.refine_start = False #True
-        opt.decay_start = True
-        opt.lr *= opt.lr_rate
-        opt.w *= opt.w_rate
-        opt.batch_size = int(opt.batch_size / opt.iteration)
-        # optimizer = optim.Adam(refiner.parameters(), lr=opt.lr)
-    else:
-        opt.refine_start = False
-        opt.decay_start = False
-        optimizer = optim.Adam(estimator.parameters(), lr=opt.lr)
-        opt.w *= opt.w_rate
+    opt.refine_start = False
+    opt.decay_start = False
+    optimizer = optim.Adam(estimator.parameters(), lr=opt.lr)
+    opt.w *= opt.w_rate
 
     if opt.dataset == 'ycb':
-        dataset = SymDataset_ycb('train', opt.num_points, False, opt.dataset_root, opt.noise_trans, opt.refine_start)
-        test_dataset = SymDataset_ycb('test', opt.num_points, False, opt.dataset_root, 0.0, opt.refine_start)
+        dataset = SymDataset_ycb('train', opt.num_points, False, opt.dataset_root, proj_dir,opt.noise_trans, opt.refine_start)
+        test_dataset = SymDataset_ycb('test', opt.num_points, False, opt.dataset_root, proj_dir,0.0, opt.refine_start)
 
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=True, num_workers=opt.workers)
     testdataloader = torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=opt.workers)

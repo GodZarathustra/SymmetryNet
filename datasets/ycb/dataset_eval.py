@@ -1,23 +1,14 @@
 import torch.utils.data as data
 from PIL import Image
-import os
-import os.path
 import torch
 import numpy as np
 import torchvision.transforms as transforms
-import argparse
-import time
 import random
 import numpy.ma as ma
-import copy
-import scipy.misc
 import scipy.io as scio
-import pickle
-
-proj_dir = 'folder/to/this/project'
 
 class SymDataset(data.Dataset):
-    def __init__(self, mode, num_pt, add_noise, root, noise_trans, refine):
+    def __init__(self, mode, num_pt, add_noise, root,proj_dir, noise_trans, refine):
         if mode == 'train':
             self.path = proj_dir + 'datasets/ycb/dataset_config/train_data_list.txt'
         elif mode == 'test':
@@ -48,7 +39,7 @@ class SymDataset(data.Dataset):
         self.len_real = len(self.real)
         self.len_syn = len(self.syn)
 
-        class_file = open(proj_dir + 'datasets/ycb/dataset_config/classes.txt')
+        class_file = open(self.root+'classes.txt')
         class_id = 1  # from 1 to 21
         self.cld = {}
         while 1:
@@ -100,15 +91,12 @@ class SymDataset(data.Dataset):
         self.refine = refine
         self.front_num = 2
 
-        # print(len(self.list))
-
     def __getitem__(self, index):
         img = Image.open('{0}/{1}-color.png'.format(self.root, self.list[index]))
         depth = np.array(Image.open('{0}/{1}-depth.png'.format(self.root, self.list[index])))
         label = np.array(Image.open('{0}/{1}-label.png'.format(self.root, self.list[index])))
         meta = scio.loadmat('{0}/{1}-meta.mat'.format(self.root, self.list[index]))
-        # sym = pickle.load(open('{0}/{1}-sym.pkl'.format(self.root, self.list[index]), 'rb'))
-        symmetries = np.loadtxt('/home/demian/ycb/tools/symmetries.txt')
+        symmetries = np.loadtxt(self.root+'symmetries.txt')
         symmetries = symmetries.reshape(21, 5, 3)
 
         if self.list[index][:8] != 'data_syn' and int(self.list[index][5:9]) >= 60:

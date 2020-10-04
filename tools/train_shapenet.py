@@ -16,14 +16,14 @@ import torch.optim as optim
 import torch.utils.data
 import sys
 from torch.autograd import Variable
-from datasets.shapenet.dataset_back import SymDataset as SymDataset_shapenet
-from lib.network_swp import SymNet
+from datasets.shapenet.dataset import SymDataset as SymDataset_shapenet
+from lib.network import SymNet
 from lib.loss import Loss
 from lib.utils import setup_logger
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default = 'shapenet', help='shapenet or scan2cad')
-parser.add_argument('--dataset_root', type=str, default = 'folder/to/your/dataset')
+parser.add_argument('--dataset_root', type=str, default = 'folder/to/your/dataset/')
 parser.add_argument('--batch_size', type=int, default = 16, help='batch size')
 parser.add_argument('--workers', type=int, default = 32, help='number of data loading workers')
 parser.add_argument('--lr', default=0.00005, help='learning rate')
@@ -74,8 +74,8 @@ def main():
     optimizer = optim.Adam(estimator.parameters(), lr=opt.lr)
     opt.w *= opt.w_rate
 
-    train_dataset = SymDataset_shapenet('train', opt.num_points, False, opt.dataset_root, opt.noise_trans, False)
-    test_dataset = SymDataset_shapenet('holdout_view', opt.num_points, False, opt.dataset_root, 0.0, False)
+    train_dataset = SymDataset_shapenet('train', opt.num_points, False, opt.dataset_root, proj_dir,opt.noise_trans, False)
+    test_dataset = SymDataset_shapenet('holdout_view', opt.num_points, False, opt.dataset_root,proj_dir, opt.noise_trans, False)
 
     dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=1, shuffle=True, num_workers=opt.workers)
     testdataloader = torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=opt.workers)

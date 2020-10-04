@@ -5,21 +5,18 @@ import os.path
 import torch
 import numpy as np
 import torchvision.transforms as transforms
-
 import numpy.ma as ma
 
-proj_dir = '/home/dell/yifeis/symnet/'
-
 class SymDataset(data.Dataset):
-    def __init__(self, mode, num_pt, add_noise, root, noise_trans, refine):
+    def __init__(self, mode, num_pt, add_noise, root, proj_dir,noise_trans, refine):
         if mode == 'train':
-            self.path = proj_dir + 'datasets/shapenet/dataset_config/split_valid2/train_ls.txt'
+            self.path = proj_dir + 'datasets/shapenet/dataset_config/train_ls.txt'
         elif mode == 'holdout_ins':
-            self.path = proj_dir + 'datasets/shapenet/dataset_config/split_valid2/holdout_ins_ls.txt'
+            self.path = proj_dir + 'datasets/shapenet/dataset_config/holdout_ins_ls.txt'
         elif mode == 'holdout_view':
-            self.path = proj_dir + 'datasets/shapenet/dataset_config/split_valid2/holdout_view_ls.txt'
+            self.path = proj_dir + 'datasets/shapenet/dataset_config/holdout_view_ls.txt'
         elif mode == 'holdout_class':
-            self.path = proj_dir + 'datasets/shapenet/dataset_config/split_valid2/holdout_class_ls.txt'
+            self.path = proj_dir + 'datasets/shapenet/dataset_config/holdout_class_ls.txt'
 
         self.num_pt = num_pt
         self.root = root
@@ -51,7 +48,7 @@ class SymDataset(data.Dataset):
         self.num_pt_mesh_small = 500  # num_point_mesh
         self.refine = refine
         self.front_num = 2
-        self.name_list = np.loadtxt(proj_dir +'name_list2.txt', dtype=str ,delimiter='\n')
+        self.name_list = np.loadtxt(self.root +'name_list.txt', dtype=str ,delimiter='\n')
         self.class_id = {
             '000': '02691156',
             '001': '02747177',
@@ -102,7 +99,7 @@ class SymDataset(data.Dataset):
         class_name = self.class_id[class_key]
         instance_ls = self.name_list[cls_idx][1:-1].split(",")
         ins_name = instance_ls[ins_num][2:-1]
-        sym_dir = '/home/dell/yifeis/shapenetcore/'
+        sym_dir = self.root+'/shapenetcore/'
         sym_file = sym_dir + class_name + '/' + ins_name + '/' + 'model_sym.txt'
         model_s = np.loadtxt(sym_file)
         syms = model_s[1:, :]

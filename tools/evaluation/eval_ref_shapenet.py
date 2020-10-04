@@ -10,7 +10,7 @@ import torch.nn.parallel
 import torch.utils.data
 from torch.autograd import Variable
 from datasets.shapenet.dataset_eval import SymDataset as SymDataset_shapenet
-from lib.network_swp import SymNet
+from lib.network import SymNet
 import matplotlib.pyplot as plt
 import numpy as np
 from lib.verification import ref_vrf
