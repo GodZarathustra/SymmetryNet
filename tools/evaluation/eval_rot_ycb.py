@@ -22,8 +22,8 @@ from lib.tools import rotate
 from skimage.measure import LineModelND, ransac
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default='ycb', help='ycb')
-parser.add_argument('--dataset_root', type=str, default='/folder/to/ycb dataset',
-                    help='dataset root dir (''YCB_Video_Dataset'')')
+parser.add_argument('--dataset_root', type=str, default = 'path/to/your/dataset/')
+parser.add_argument('--project_root', type=str, default = 'path/to/this/project/')
 parser.add_argument('--batch_size', type=int, default=4, help='batch size')
 parser.add_argument('--workers', type=int, default=0, help='number of data loading workers')
 parser.add_argument('--lr', default=0.0001, help='learning rate')
@@ -39,7 +39,7 @@ parser.add_argument('--nepoch', type=int, default=500, help='max number of epoch
 parser.add_argument('--resume_symnet', type=str, default='', help='resume SymNet model')
 opt = parser.parse_args()
 
-proj_dir = 'folder/to/this/project'
+proj_dir = opt.project_root
 sym_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 15, 17, 18, 19, 20]
 
 def prcurve(DIST_THRESHOLD):
@@ -79,8 +79,8 @@ def prcurve(DIST_THRESHOLD):
         opt.w *= opt.w_rate
 
     if opt.dataset == 'ycb':
-        dataset = SymDataset_ycb('train', opt.num_points, False, opt.dataset_root, opt.noise_trans, opt.refine_start)
-        test_dataset = SymDataset_ycb('test', opt.num_points, False, opt.dataset_root, 0.0, opt.refine_start)
+        dataset = SymDataset_ycb('train', opt.num_points, False, opt.dataset_root, proj_dir,opt.noise_trans, opt.refine_start)
+        test_dataset = SymDataset_ycb('test', opt.num_points, False, opt.dataset_root,proj_dir, 0.0, opt.refine_start)
 
     testdataloader = torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=opt.workers)
 

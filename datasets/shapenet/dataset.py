@@ -7,10 +7,9 @@ import numpy as np
 import torchvision.transforms as transforms
 import numpy.ma as ma
 from PIL import Image
-proj_dir = 'folder/to/this/project'
 
 class SymDataset(data.Dataset):
-    def __init__(self, mode, num_pt, add_noise, root, noise_trans, refine):
+    def __init__(self, mode, num_pt, add_noise, root, proj_dir,noise_trans, refine):
         if mode == 'train':
             self.path = proj_dir + 'datasets/shapenet/dataset_config/train_ls.txt'
         elif mode == 'holdout_ins':
@@ -52,7 +51,7 @@ class SymDataset(data.Dataset):
         self.num_pt_mesh = 500  # num_point_mesh
         self.refine = refine
         self.front_num = 2
-        self.name_list = np.loadtxt(proj_dir + 'name_list.txt', dtype=str, delimiter='\n')
+        self.name_list = np.loadtxt(self.root + 'name_list.txt', dtype=str, delimiter='\n')
         self.class_id = {
             '000': '02691156',
             '001': '02747177',

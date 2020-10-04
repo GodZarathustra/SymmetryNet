@@ -18,15 +18,15 @@ from lib.tools import rotate
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default = 'shapenet', help='shapenet or scannet')
-parser.add_argument('--dataset_root', type=str, default='your/folder/to/dataset',
-                    help='dataset root dir')
+parser.add_argument('--dataset_root', type=str, default = 'path/to/your/dataset/')
+parser.add_argument('--project_root', type=str, default = 'path/to/this/project/')
 parser.add_argument('--batch_size', type=int, default=16, help='batch size')
 parser.add_argument('--workers', type=int, default=32, help='number of data loading workers')
 parser.add_argument('--resume_posenet', type=str, default='', help='resume SymNet model')
 parser.add_argument('--occ_level', type=str, default='', help='choose level of occlusion: light or heavy or mid')
 opt = parser.parse_args()
 torch.set_num_threads(32)
-proj_dir = 'folder/to/this/project'
+proj_dir = opt.project_root
 device_ids = [0]
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
@@ -51,9 +51,9 @@ def prcurve(THRESHOLD):
     opt.decay_start = False
 
     if opt.dataset == 'shapenet':
-        dataset = SymDataset_shapenet('train', opt.num_points, False, opt.dataset_root, opt.noise_trans,
+        dataset = SymDataset_shapenet('train', opt.num_points, False, opt.dataset_root, proj_dir,opt.noise_trans,
                                       opt.refine_start)
-        test_dataset = SymDataset_shapenet('holdout_view', opt.num_points, False, opt.dataset_root, 0.0,
+        test_dataset = SymDataset_shapenet('holdout_view', opt.num_points, False, opt.dataset_root, proj_dir,0.0,
                                            opt.refine_start)
     testdataloader = torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=opt.workers)
 

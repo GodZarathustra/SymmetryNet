@@ -15,7 +15,8 @@ from lib.utils import setup_logger
 import math
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default = 'ycb', help='ycb')
-parser.add_argument('--dataset_root', type=str, default = 'your/ycb/data/dir', help='dataset root dir (''YCB_Video_Dataset'')')
+parser.add_argument('--dataset_root', type=str, default = 'path/to/your/dataset/')
+parser.add_argument('--project_root', type=str, default = 'path/to/this/project/')
 parser.add_argument('--batch_size', type=int, default = 8, help='batch size')
 parser.add_argument('--workers', type=int, default = 10, help='number of data loading workers')
 parser.add_argument('--lr', default=0.0001, help='learning rate')
@@ -31,7 +32,7 @@ parser.add_argument('--resume_symnet', type=str, default = '',  help='resume Sym
 parser.add_argument('--start_epoch', type=int, default = 1, help='which epoch to start')
 opt = parser.parse_args()
 
-proj_dir = '/folder/to/this/project'
+proj_dir = opt.project_root
 
 sym_list = [1, 3, 4, 5, 6, 8, 10, 11, 12, 13, 15, 17, 18, 20]
 

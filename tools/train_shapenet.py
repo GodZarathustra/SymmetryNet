@@ -23,7 +23,8 @@ from lib.utils import setup_logger
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default = 'shapenet', help='shapenet or scan2cad')
-parser.add_argument('--dataset_root', type=str, default = 'folder/to/your/dataset/')
+parser.add_argument('--dataset_root', type=str, default = 'path/to/your/dataset/')
+parser.add_argument('--project_root', type=str, default = 'path/to/this/project/')
 parser.add_argument('--batch_size', type=int, default = 16, help='batch size')
 parser.add_argument('--workers', type=int, default = 32, help='number of data loading workers')
 parser.add_argument('--lr', default=0.00005, help='learning rate')
@@ -38,7 +39,7 @@ parser.add_argument('--resume_symnet', type=str, default = '',  help='resume Sym
 parser.add_argument('--start_epoch', type=int, default = 1, help='which epoch to start')
 opt = parser.parse_args()
 
-proj_dir = 'folder/to/your/project'
+proj_dir = opt.project_root
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 def main():
