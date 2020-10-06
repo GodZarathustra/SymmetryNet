@@ -1,7 +1,6 @@
 from torch.nn.modules.loss import _Loss
 import torch
 import math
-import itertools
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 import torch.nn.functional as F

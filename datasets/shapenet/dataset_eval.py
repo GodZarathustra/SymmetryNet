@@ -1,7 +1,5 @@
 import torch.utils.data as data
 import cv2
-import os
-import os.path
 import torch
 import numpy as np
 import torchvision.transforms as transforms
@@ -89,9 +87,6 @@ class SymDataset(data.Dataset):
             print('{0}/{1}-k-crop.txt'.format(self.root, self.list[index]))
 
         input_file = self.list[index]
-        # class_key = input_file[20:23]
-        # input_id = int(input_file[20:23])
-        # ins_num = int(input_file[24:28])
         class_key = input_file[:3]
         input_id = int(class_key)
         ins_num = int(input_file[4:8])

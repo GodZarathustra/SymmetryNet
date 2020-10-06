@@ -5,15 +5,12 @@ import random
 import time
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.parallel
-import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import torch.utils.data
 from torch.autograd import Variable
 from datasets.ycb.dataset_eval import SymDataset as SymDataset_ycb
 from lib.network import SymNet
-from lib.loss import Loss
 import matplotlib.pyplot as plt
 from ransac import *
 from lib.verification import rot_vrf

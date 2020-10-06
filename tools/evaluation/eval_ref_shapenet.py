@@ -1,7 +1,6 @@
 #coding=utf-8
 import argparse
 import os
-import sys
 import math
 import random
 import time
@@ -15,7 +14,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from lib.verification import ref_vrf
 from lib.tools import reflect
-import open3d
 import sklearn.cluster as skc
 
 parser = argparse.ArgumentParser()
@@ -26,6 +24,7 @@ parser.add_argument('--batch_size', type=int, default=16, help='batch size')
 parser.add_argument('--workers', type=int, default=32, help='number of data loading workers')
 parser.add_argument('--resume_posenet', type=str, default='', help='resume SymNet model')
 parser.add_argument('--occ_level', type=str, default='', help='choose level of occlusion: light or heavy or mid')
+parser.add_argument('--noise_trans', default=0.03, help='range of the random noise of translation added to the training data')
 opt = parser.parse_args()
 torch.set_num_threads(32)
 proj_dir = opt.project_root
@@ -53,8 +52,8 @@ def prcurve(DIST_THRESHOLD):
     opt.decay_start = False
 
     if opt.dataset == 'shapenet':
-        dataset = SymDataset_shapenet('train', opt.num_points, False, opt.dataset_root, opt.noise_trans, opt.refine_start)
-        test_dataset = SymDataset_shapenet('train', opt.num_points, False, opt.dataset_root, 0.0, opt.refine_start)
+        dataset = SymDataset_shapenet('train', opt.num_points, False, opt.dataset_root, proj_dir,opt.noise_trans, opt.refine_start)
+        test_dataset = SymDataset_shapenet('train', opt.num_points, False, opt.dataset_root,proj_dir, 0.0, opt.refine_start)
     testdataloader = torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=opt.workers)
 
     opt.num_points_mesh = dataset.get_num_points_mesh()

@@ -14,7 +14,6 @@ import torch
 import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
-import sys
 from torch.autograd import Variable
 from datasets.shapenet.dataset import SymDataset as SymDataset_shapenet
 from lib.network import SymNet

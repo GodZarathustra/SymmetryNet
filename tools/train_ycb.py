@@ -2,7 +2,6 @@ import argparse
 import os
 import random
 import time
-import numpy as np
 import torch
 import torch.nn.parallel
 import torch.optim as optim
@@ -12,7 +11,7 @@ from datasets.ycb.dataset import SymDataset as SymDataset_ycb
 from lib.network import SymNet
 from lib.loss import Loss
 from lib.utils import setup_logger
-import math
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default = 'ycb', help='ycb')
 parser.add_argument('--dataset_root', type=str, default = 'path/to/your/dataset/')
