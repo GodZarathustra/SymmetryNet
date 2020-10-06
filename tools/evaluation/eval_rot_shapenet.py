@@ -23,6 +23,7 @@ parser.add_argument('--batch_size', type=int, default=16, help='batch size')
 parser.add_argument('--workers', type=int, default=32, help='number of data loading workers')
 parser.add_argument('--resume_posenet', type=str, default='', help='resume SymNet model')
 parser.add_argument('--occ_level', type=str, default='', help='choose level of occlusion: light or heavy or mid')
+parser.add_argument('--noise_trans', default=0.03, help='range of the random noise of translation added to the training data')
 opt = parser.parse_args()
 torch.set_num_threads(32)
 proj_dir = opt.project_root
