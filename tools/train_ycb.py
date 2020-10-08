@@ -1,5 +1,7 @@
 import argparse
 import os
+import sys
+# sys.path.append('/your/project/path') # to run on a server
 import random
 import time
 import torch
@@ -7,15 +9,15 @@ import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
 from torch.autograd import Variable
-from datasets.ycb.dataset import SymDataset as SymDataset_ycb
+from datasets.ycb.dataset_ycb import SymDataset as SymDataset_ycb
 from lib.network import SymNet
 from lib.loss import Loss
 from lib.utils import setup_logger
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default = 'ycb', help='ycb')
-parser.add_argument('--dataset_root', type=str, default = 'path/to/your/dataset/')
-parser.add_argument('--project_root', type=str, default = 'path/to/this/project/')
+parser.add_argument('--dataset_root', type=str, default = '/your/ycb/data/path')
+parser.add_argument('--project_root', type=str, default = '/your/project/path')
 parser.add_argument('--batch_size', type=int, default = 8, help='batch size')
 parser.add_argument('--workers', type=int, default = 10, help='number of data loading workers')
 parser.add_argument('--lr', default=0.0001, help='learning rate')
@@ -30,7 +32,7 @@ parser.add_argument('--nepoch', type=int, default=500, help='max number of epoch
 parser.add_argument('--resume_symnet', type=str, default = '',  help='resume SymNet model') #sym_model_current.pth
 parser.add_argument('--start_epoch', type=int, default = 1, help='which epoch to start')
 opt = parser.parse_args()
-
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 proj_dir = opt.project_root
 
 sym_list = [1, 3, 4, 5, 6, 8, 10, 11, 12, 13, 15, 17, 18, 20]

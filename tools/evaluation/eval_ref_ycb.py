@@ -1,5 +1,7 @@
 import argparse
 import os
+import sys
+# sys.path.append('/your/project/path') # to run on a server
 import numpy as np
 import math
 import random
@@ -9,25 +11,24 @@ import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
 from torch.autograd import Variable
-from datasets.ycb.dataset import SymDataset as SymDataset_ycb
+from datasets.ycb.dataset_ycb_eval import SymDataset as SymDataset_ycb
 from lib.network import SymNet
 from lib.tools import reflect
 import matplotlib.pyplot as plt
-from ransac import *
 import sklearn.cluster as skc  
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default='ycb', help='ycb')
-parser.add_argument('--dataset_root', type=str, default = 'path/to/your/dataset/')
-parser.add_argument('--project_root', type=str, default = 'path/to/this/project/')
+parser.add_argument('--dataset_root', type=str, default = '/your/ycb/data/path')
+parser.add_argument('--project_root', type=str, default = '/your/project/path')
 parser.add_argument('--batch_size', type=int, default=4, help='batch size')
-parser.add_argument('--workers', type=int, default=10, help='number of data loading workers')
+parser.add_argument('--workers', type=int, default=0, help='number of data loading workers')
 parser.add_argument('--decay_margin', default=0.016, help='margin to decay lr & w')
 parser.add_argument('--noise_trans', default=0.03,
                     help='range of the random noise of translation added to the training data')
-parser.add_argument('--resume_symnet', type=str, default='', help='resume SymNet model')
+parser.add_argument('--resume_symnet', type=str, default='ycb_model.pth', help='resume SymNet model')
 opt = parser.parse_args()
-
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 proj_dir = opt.project_root
 sym_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 15, 17, 18, 19, 20]
 
@@ -39,8 +40,7 @@ def prcurve(DIST_THRESHOLD):
     if opt.dataset == 'ycb':
         opt.num_objects = 21  # number of object classes in the dataset
         opt.num_points = 1000  # number of points on the input pointcloud
-        opt.outf = proj_dir + 'trained_models/ycb/swp'  # folder to save trained models
-        opt.log_dir = proj_dir + 'visualization'  # folder to save logs
+        opt.outf = proj_dir + 'trained_models/ycb'  # folder to save trained models
         opt.repeat_epoch = 1  # number of repeat times for one epoch training
 
     else:
@@ -233,7 +233,7 @@ def prcurve(DIST_THRESHOLD):
 
 if __name__ == '__main__':
     st_time = time.time()
-    savedir = proj_dir + 'tools/plot/'
+    savedir = proj_dir + 'tools/'
     DIST_THRESHOLD = 15
 
     recall, prec = prcurve(math.tan(DIST_THRESHOLD / 180 * math.pi))

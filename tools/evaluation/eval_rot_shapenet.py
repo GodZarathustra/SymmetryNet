@@ -1,5 +1,7 @@
 import argparse
 import os
+import sys
+# sys.path.append('/your/project/path') # to run on a server
 import math
 import random
 import time
@@ -7,7 +9,7 @@ import torch
 import torch.nn.parallel
 import torch.utils.data
 from torch.autograd import Variable
-from datasets.shapenet.dataset_eval import SymDataset as SymDataset_shapenet
+from datasets.shapenet.dataset_shapenet_eval import SymDataset as SymDataset_shapenet
 from lib.network import SymNet
 from lib.verification import rot_vrf
 import matplotlib.pyplot as plt
@@ -17,11 +19,11 @@ from lib.tools import rotate
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default = 'shapenet', help='shapenet or scannet')
-parser.add_argument('--dataset_root', type=str, default = 'path/to/your/dataset/')
-parser.add_argument('--project_root', type=str, default = 'path/to/this/project/')
+parser.add_argument('--dataset_root', type=str, default = '/your/shapenet/data/path')
+parser.add_argument('--project_root', type=str, default = '/your/project/path')
 parser.add_argument('--batch_size', type=int, default=16, help='batch size')
 parser.add_argument('--workers', type=int, default=32, help='number of data loading workers')
-parser.add_argument('--resume_posenet', type=str, default='', help='resume SymNet model')
+parser.add_argument('--resume_posenet', type=str, default='shapenet_model.pth', help='resume SymNet model')
 parser.add_argument('--occ_level', type=str, default='', help='choose level of occlusion: light or heavy or mid')
 parser.add_argument('--noise_trans', default=0.03, help='range of the random noise of translation added to the training data')
 opt = parser.parse_args()
@@ -53,7 +55,7 @@ def prcurve(THRESHOLD):
     if opt.dataset == 'shapenet':
         dataset = SymDataset_shapenet('train', opt.num_points, False, opt.dataset_root, proj_dir,opt.noise_trans,
                                       opt.refine_start)
-        test_dataset = SymDataset_shapenet('holdout_view', opt.num_points, False, opt.dataset_root, proj_dir,0.0,
+        test_dataset = SymDataset_shapenet('holdout_instance', opt.num_points, False, opt.dataset_root, proj_dir,0.0,
                                            opt.refine_start)
     testdataloader = torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=opt.workers)
 
@@ -84,7 +86,7 @@ def prcurve(THRESHOLD):
         elif opt.occ_level == 'heavy':
             occlusion = ((occ < 0.7) or (occ > 0.8))
         else:
-            occlusion = True
+            occlusion = False
 
         if (pt_num < 0.01) or (target_mode == 0) or occlusion:
             continue

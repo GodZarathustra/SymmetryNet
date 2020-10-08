@@ -1,6 +1,8 @@
 #coding=utf-8
 import argparse
 import os
+import sys
+# sys.path.append('/your/project/path') # to run on a server
 import math
 import random
 import time
@@ -8,7 +10,7 @@ import torch
 import torch.nn.parallel
 import torch.utils.data
 from torch.autograd import Variable
-from datasets.shapenet.dataset_eval import SymDataset as SymDataset_shapenet
+from datasets.shapenet.dataset_shapenet_eval import SymDataset as SymDataset_shapenet
 from lib.network import SymNet
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,11 +20,11 @@ import sklearn.cluster as skc
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default = 'shapenet', help='shapenet or scannet')
-parser.add_argument('--dataset_root', type=str, default = 'path/to/your/dataset/')
-parser.add_argument('--project_root', type=str, default = 'path/to/this/project/')
-parser.add_argument('--batch_size', type=int, default=16, help='batch size')
-parser.add_argument('--workers', type=int, default=32, help='number of data loading workers')
-parser.add_argument('--resume_posenet', type=str, default='', help='resume SymNet model')
+parser.add_argument('--dataset_root', type=str, default = '/your/shapenet/data/path')
+parser.add_argument('--project_root', type=str, default = '/your/project/path')
+parser.add_argument('--batch_size', type=int, default=1, help='batch size')
+parser.add_argument('--workers', type=int, default=0, help='number of data loading workers')
+parser.add_argument('--resume_posenet', type=str, default='shapenet_model.pth', help='resume SymNet model')
 parser.add_argument('--occ_level', type=str, default='', help='choose level of occlusion: light or heavy or mid')
 parser.add_argument('--noise_trans', default=0.03, help='range of the random noise of translation added to the training data')
 opt = parser.parse_args()
@@ -38,7 +40,7 @@ def prcurve(DIST_THRESHOLD):
 
     if opt.dataset == 'shapenet':
         opt.num_points = 1000  # number of points on the input pointcloud
-        opt.outf = proj_dir + 'trained_models/shapenet/swp'  # folder to save trained models
+        opt.outf = proj_dir + 'trained_models/shapenet/'  # folder to save trained models
         opt.repeat_epoch = 1  # number of repeat times for one epoch training
 
     # estimator = torch.nn.DataParallel(SymNet(num_points=opt.num_points))
@@ -53,7 +55,7 @@ def prcurve(DIST_THRESHOLD):
 
     if opt.dataset == 'shapenet':
         dataset = SymDataset_shapenet('train', opt.num_points, False, opt.dataset_root, proj_dir,opt.noise_trans, opt.refine_start)
-        test_dataset = SymDataset_shapenet('train', opt.num_points, False, opt.dataset_root,proj_dir, 0.0, opt.refine_start)
+        test_dataset = SymDataset_shapenet('holdout_class', opt.num_points, False, opt.dataset_root,proj_dir, 0.0, opt.refine_start)
     testdataloader = torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=opt.workers)
 
     opt.num_points_mesh = dataset.get_num_points_mesh()
@@ -96,9 +98,9 @@ def prcurve(DIST_THRESHOLD):
         elif opt.occ_level == 'heavy':
             occlusion = ((occ < 0.7) or (occ > 0.8))
         else:
-            occlusion = True
+            occlusion = False
 
-        if (pt_num < 0.01) or (target_mode == 0) or occlusion:
+        if (pt_num < 0.01) or (target_mode == 1) or occlusion:
             continue
 
         total_fream += 1
@@ -168,12 +170,11 @@ def prcurve(DIST_THRESHOLD):
             norm_conf_list[i] = norm_conf
             # sym_conf[i] = my_num[i]*norm_conf
         edtime = time.time()-st_time
-        print('endtime=',edtime)
 
         ######## verification
         self_conf_list = []
         for i in range(3):
-            outlier = ref_vrf(out_sym[i], out_cent, points, depth[0], cam_ins, 100)
+            outlier = ref_vrf(out_sym[i], out_cent, points, depth[0], cam_ins, 100,depth.shape[1],depth.shape[2],thresh=0.2)
             self_conf = 1 - outlier / 1000
             self_conf_list.append(self_conf)
             sym_conf[i] = my_num[i] *self_conf*norm_conf_list[i]
@@ -212,8 +213,9 @@ def prcurve(DIST_THRESHOLD):
                 fp += 1
                 fp_conf.append(sym_conf[m])
 
-        total_num += target_sym.shape[0]
         print('predcting frame:', j, ' object:', idx, 'target_num', target_num)
+        total_num += target_sym.shape[0]
+
 
     fn = total_num - tp
     tp_conf = np.array(tp_conf)

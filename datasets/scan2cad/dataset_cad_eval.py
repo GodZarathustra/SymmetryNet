@@ -9,25 +9,23 @@ import random
 import numpy.ma as ma
 import scipy.io as scio
 
-proj_dir = '/home/dell/yifeis/symnet/'
-
 class SymDataset(data.Dataset):
-    def __init__(self, mode, num_pt, add_noise, root, noise_trans, refine):
-        if mode == 'cad_train':
-            self.path = proj_dir +'datasets/scan2cad/dataset_config/scan2cad_train_list.txt'
-        elif mode == 'cad_scene':
-            self.path = proj_dir +'datasets/scan2cad/dataset_config/scan2cad_scene_list.txt'
-        elif mode == 'cad_frame':
-            self.path = proj_dir +'datasets/scan2cad/dataset_config/scan2cad_frame_list.txt'
+    def __init__(self, mode, num_pt, add_noise, root, proj_dir, noise_trans):
+        if mode == 'train':
+            self.path = proj_dir + 'datasets/scan2cad/dataset_config/train.txt'
+        elif mode == 'holdout_scene':
+            self.path = proj_dir + 'datasets/scan2cad/dataset_config/holdout_scene.txt'
+        elif mode == 'holdout_view':
+            self.path = proj_dir + 'datasets/scan2cad/dataset_config/holdout_view.txt'
 
         self.num_pt = num_pt
-        self.root = root
+        self.root = root + 'rgbd/' + mode
+        self.symdir = root + 'model_symmetry/'
+        self.projdir = proj_dir
         self.add_noise = add_noise
         self.noise_trans = noise_trans
 
         self.list = []
-        self.real = []
-        self.syn = []
         input_file = open(self.path)
         while 1:
             input_line = input_file.readline()
@@ -35,16 +33,10 @@ class SymDataset(data.Dataset):
                 break
             if input_line[-1:] == '\n':
                 input_line = input_line[:-1]
-            if input_line[:5] == 'data/':
-                self.real.append(input_line)
-            else:
-                self.syn.append(input_line)
             self.list.append(input_line)
         input_file.close()
 
         self.length = len(self.list)
-        self.len_real = len(self.real)
-        self.len_syn = len(self.syn)
         self.cld = {}
 
         self.xmap = np.array([[j for i in range(640)] for j in range(480)])  # 480*640, xmap[i,:]==i
@@ -55,12 +47,17 @@ class SymDataset(data.Dataset):
         self.noise_img_scale = 7.0
         self.minimum_num_pt = 100
         self.norm = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        # self.symmetry_obj_idx = [12, 15, 18, 19, 20]
         self.symmetry_obj_idx = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 15, 17, 18, 19, 20]
-        self.categories = ['02691156', '02747177', '02773838', '02801938', '02808440', '02818832', '02828884', '02843684', '02871439', '02876657', '02880940', '02924116', '02933112', '02942699', '02946921', '02954340', '02958343', '02992529', '03001627', '03046257', '03085013', '03207941', '03211117', '03261776', '03325088', '03337140', '03467517', '03513137', '03593526', '03624134', '03636649', '03642806', '03691459', '03710193', '03759954', '03761084', '03790512', '03797390', '03928116', '03938244', '03948459', '03991062', '04004475', '04074963', '04090263', '04099429', '04225987', '04256520', '04330267', '04379243', '04401088', '04460130', '04468005', '04530566', '04554684']
+        self.categories = ['02691156', '02747177', '02773838', '02801938', '02808440', '02818832', '02828884',
+                           '02843684', '02871439', '02876657', '02880940', '02924116', '02933112', '02942699',
+                           '02946921', '02954340', '02958343', '02992529', '03001627', '03046257', '03085013',
+                           '03207941', '03211117', '03261776', '03325088', '03337140', '03467517', '03513137',
+                           '03593526', '03624134', '03636649', '03642806', '03691459', '03710193', '03759954',
+                           '03761084', '03790512', '03797390', '03928116', '03938244', '03948459', '03991062',
+                           '04004475', '04074963', '04090263', '04099429', '04225987', '04256520', '04330267',
+                           '04379243', '04401088', '04460130', '04468005', '04530566', '04554684']
         self.num_pt_mesh_small = 1000  # num_point_mesh
         self.num_pt_mesh_large = 2600
-        self.refine = refine
         self.front_num = 2
         self.flag = 0
         # print(len(self.list))
@@ -77,7 +74,7 @@ class SymDataset(data.Dataset):
                 obj_choose = meta['cls_dirs'][idx]
                 class_name = obj_choose[:8]
                 ins_name = obj_choose[9:]
-                sym_dir = '/home/dell/yifeis/ShapeNetCore.v2/'
+                sym_dir = self.symdir
                 sym_file = sym_dir + class_name + '/' + ins_name.strip() + '/' + 'models/' + 'model_normalized_sym.txt'
                 if os.path.exists(sym_file) == False:
                     self.flag = 0

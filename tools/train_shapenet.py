@@ -5,9 +5,10 @@
 # Written by Huang
 # This code was build based on Densefusion https://github.com/j96w/DenseFusion
 # --------------------------------------------------------
-
 import argparse
 import os
+import sys
+# sys.path.append('/your/project/path') # to run on a server
 import random
 import time
 import torch
@@ -15,15 +16,16 @@ import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
 from torch.autograd import Variable
-from datasets.shapenet.dataset import SymDataset as SymDataset_shapenet
+from datasets.shapenet.dataset_shapenet import SymDataset as SymDataset_shapenet
 from lib.network import SymNet
 from lib.loss import Loss
 from lib.utils import setup_logger
 
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default = 'shapenet', help='shapenet or scan2cad')
-parser.add_argument('--dataset_root', type=str, default = 'path/to/your/dataset/')
-parser.add_argument('--project_root', type=str, default = 'path/to/this/project/')
+parser.add_argument('--dataset_root', type=str, default = '/your/shapenet/data/path')
+parser.add_argument('--project_root', type=str, default = '/your/project/path')
 parser.add_argument('--batch_size', type=int, default = 16, help='batch size')
 parser.add_argument('--workers', type=int, default = 32, help='number of data loading workers')
 parser.add_argument('--lr', default=0.00005, help='learning rate')
@@ -39,7 +41,7 @@ parser.add_argument('--start_epoch', type=int, default = 1, help='which epoch to
 opt = parser.parse_args()
 
 proj_dir = opt.project_root
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 def main():
     # device_ids = range(torch.cuda.device_count())
@@ -54,8 +56,8 @@ def main():
         opt.repeat_epoch = 1  # number of repeat times for one epoch training
     elif opt.dataset == 'scan2cad':
         opt.num_points = 500
-        opt.outf = proj_dir+'trained_models/cad'
-        opt.log_dir = proj_dir+'experiments/logs/cad'
+        opt.outf = proj_dir+'trained_models/scan2cad'
+        opt.log_dir = proj_dir+'experiments/logs/scan2cad'
         opt.repeat_epoch = 20
     else:
         print('Unknown dataset')
@@ -65,7 +67,6 @@ def main():
     estimator = estimator.cuda()
     # estimator = torch.nn.DataParallel(estimator)
     # estimator = torch.nn.parallel.DistributedDataParallel(estimator)
-    #
 
     if opt.resume_symnet != '':
         estimator.load_state_dict(torch.load('{0}/{1}'.format(opt.outf, opt.resume_symnet)))
