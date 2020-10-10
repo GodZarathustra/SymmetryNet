@@ -100,7 +100,7 @@ python tools/evaluation/eval_rot_scannet.py
 ```
 
 ## Pretrained model & data download
-The pretrained models and data can be found at [model](?) and [data](?)
+The pretrained models and data can be found at [here](https://www.dropbox.com/sh/k9dikvbiwcrwv8o/AAD_uZJgBiXhl01SbbOIlZtRa?dl=0) (dropbox) and [here](https://pan.baidu.com/s/1ztpo3EKL724YAeiFLPVZzQ) (baidu yunpan, password: symm).
 
 ## Loss items in our paper:
 > center-loss + ref-ctp-loss + ref-foot-loss + rot-foot-loss + num-loss + mode-loss + ref-co-loss + rot-co-loss
