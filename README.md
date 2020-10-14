@@ -102,12 +102,5 @@ python tools/evaluation/eval_rot_scannet.py
 ## Pretrained model & data download
 The pretrained models and data can be found at [here](https://www.dropbox.com/sh/k9dikvbiwcrwv8o/AAD_uZJgBiXhl01SbbOIlZtRa?dl=0) (dropbox) and [here](https://pan.baidu.com/s/1ztpo3EKL724YAeiFLPVZzQ) (baidu yunpan, password: symm).
 
-## Loss items in our paper:
-> center-loss + ref-ctp-loss + ref-foot-loss + rot-foot-loss + num-loss + mode-loss + ref-co-loss + rot-co-loss
 
-* **ref-ctp-loss** : the counterpart error,i.e. ctp-dis/ctp-len
-* **num-loss** : optmal assigment loss
-* **mode-loss** : classification of symmetry types, ref-only(0)? rot-only(1)? both(2)?
-* **ref-co-loss** : for reflectional symmetry, the distance from input point to its counterpart point is 2 times as large as the distance from input point to its foot point on the symmetry, i.e. ctp-dis = 2*foot-pt-dis
-* **rot-co-loss**: for rotational symmetry, the vector from an input point to its foot point is perpendicular to the vector from center to the foot point,i.e. center-to-foot ⊥ pt-to-foot
 
